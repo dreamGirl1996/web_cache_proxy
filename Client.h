@@ -17,15 +17,15 @@
 
 class ClientSocket {
     public:
-    std::string hostName;
-    ClientSocket(std::string hostName);
+    std::string & hostName;
+    ClientSocket(std::string & hostName);
     bool talkToServer(std::string & req, std::string &recvMsg);
     
     private:
     void *getInAddr(struct sockaddr *sa);
 };
 
-ClientSocket::ClientSocket(std::string hostName) : hostName(hostName) {}
+ClientSocket::ClientSocket(std::string & hostName) : hostName(hostName) {}
 
 // get socket address, through ipv4 or ipv6
 void * ClientSocket::getInAddr(struct sockaddr *sa) {
@@ -37,7 +37,7 @@ void * ClientSocket::getInAddr(struct sockaddr *sa) {
 
 // open a socket to the real server, send request 
 // to the server and receive response from it
-bool ClientSocket::talkToServer(std::string & req, std::string &recvMsg) {
+bool ClientSocket::talkToServer(std::string & req, std::string & recvMsg) {
     std::string addr = this->hostName;
     int sockfd, numbytes;
     char recvBuf[MAX_DATA_SIZE];
@@ -50,7 +50,7 @@ bool ClientSocket::talkToServer(std::string & req, std::string &recvMsg) {
     hints.ai_socktype = SOCK_STREAM;
 
     if ((rv = getaddrinfo(addr.c_str(), SERVER_PORT, &hints, &servinfo) != 0)) { // servinfo: linked list
-        std::cerr << "getaddrinfo: " << gai_strerror(rv) << std::endl;
+        std::cerr << "getaddrinfo: " << gai_strerror(rv) << "\n";
         return false;
     }
 
@@ -69,12 +69,12 @@ bool ClientSocket::talkToServer(std::string & req, std::string &recvMsg) {
     }
 
     if (p == NULL) {
-        std::cerr << "proxy ClientSocket: failed to connect" << std::endl;
+        std::cerr << "proxy ClientSocket: failed to connect" << "\n";
         return false;
     }
 
     inet_ntop(p->ai_family, this->getInAddr((struct sockaddr *)p->ai_addr), s, sizeof s);
-    // std::cout << "proxy ClientSocket: connecting to " << s << std::endl;
+    // std::cout << "proxy ClientSocket: connecting to " << s << "\n";
 
     freeaddrinfo(servinfo);
 
@@ -82,7 +82,7 @@ bool ClientSocket::talkToServer(std::string & req, std::string &recvMsg) {
         std::perror("send");
         return false;
     }
-    // std::cout << "proxy ClientSocket: sending " << req.c_str() << std::endl;
+    // std::cout << "proxy ClientSocket: sending " << req.c_str() << "\n";
 
     while ((numbytes = recv(sockfd, recvBuf, MAX_DATA_SIZE - 1, 0)) > 0) {
         recvBuf[numbytes] = '\0';
