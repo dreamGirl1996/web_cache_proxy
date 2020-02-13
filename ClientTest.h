@@ -32,20 +32,17 @@ std::string trim(const std::string & s) {
 }
 // End of citation
 
-// Begin citation
-// https://stackoverflow.com/questions/313970/how-to-convert-stdstring-to-lower-case
-void tolower(std::string & s) {
-    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return std::tolower(c); });
-}
-// End of citation
-
 //-2: not found
 //-1: error
 // 0: found
 // 1: found previously
 int findHostName(bool & isfound, const std::string & lineMsg, std::string & hostName) {
     if (isfound) {return 1;}
-    if (size_t loc = lineMsg.find("Host:") != std::string::npos) {
+    std::string lineMsgLower = lineMsg;
+    for (size_t i = 0; i < lineMsgLower.size(); i++) {
+        lineMsgLower[i] = tolower(lineMsgLower[i]);
+    }
+    if (size_t loc = lineMsgLower.find("host:") != std::string::npos) {
         isfound = true;
         loc += 5;  // size of "host:"
         while (isspace(lineMsg[loc]) && lineMsg[loc] != '\n') {
