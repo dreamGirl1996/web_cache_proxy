@@ -1,7 +1,7 @@
 #ifndef __CLIENTTEST_H__
 #define __CLIENTTEST_H__
 
-#include "Client.h"
+#include "ClientSocket.h"
 #include <cassert>
 #include <sstream>
 #include <algorithm>
@@ -62,19 +62,11 @@ bool readInput(FILE * in, std::string & hostName, std::string & request) {
     assert(in != NULL);
     char * line = NULL;
     size_t sz;
-    // bool firstLine = true;
     bool isfound = false;
     while (getline(&line, &sz, in) != -1) {
         const char * temp = line;
         std::string lineMsg = temp;
         lineMsg = trim(lineMsg);
-        // if (firstLine) {
-        //     firstLine = false;
-        //     hostName = lineMsg;
-        // }
-        // else {
-        //     request += lineMsg + "\r\n";
-        // }
 
         if (findHostName(isfound, lineMsg, hostName) == -1) {
             return false;

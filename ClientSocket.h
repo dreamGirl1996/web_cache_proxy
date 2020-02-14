@@ -1,6 +1,7 @@
-#ifndef __CLIENT_H__
-#define __CLIENT_H__
+#ifndef __CLIENTSOCKET_H__
+#define __CLIENTSOCKET_H__
 
+#include "Socket.h"
 #include <iostream>
 #include <cstdio>
 #include <cstdlib>
@@ -9,39 +10,29 @@
 #include <cstring>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
+// #include <sys/socket.h>
+// #include <arpa/inet.h>
 
-#define SERVER_PORT "80"
-#define MAX_DATA_SIZE 1024
-
-class ClientSocket {
+class ClientSocket : public Socket {
     public:
     std::string & hostName;
     ClientSocket(std::string & hostName);
-    bool talkToServer(std::string & req, std::string &recvMsg);
-    
+    bool setup();
+    // bool talk(std::string & req, std::string &recvMsg);
+    bool socketSend(std::string & req);
+    bool socketRecv(std::string & recvMsg);
+    void closeSocket();
+
     private:
-    void *getInAddr(struct sockaddr *sa);
+    int sockfd;
 };
 
-ClientSocket::ClientSocket(std::string & hostName) : hostName(hostName) {}
+ClientSocket::ClientSocket(std::string & hostName) : hostName(hostName), sockfd(-1) {}
 
-// get socket address, through ipv4 or ipv6
-void * ClientSocket::getInAddr(struct sockaddr *sa) {
-    if (sa->sa_family == AF_INET) {
-        return &(((struct sockaddr_in *)sa)->sin_addr);
-    }
-    return &(((struct sockaddr_in6 *)sa)->sin6_addr);
-}
-
-// open a socket to the real server, send request 
-// to the server and receive response from it
-bool ClientSocket::talkToServer(std::string & req, std::string & recvMsg) {
+bool ClientSocket::setup() {
     std::string addr = this->hostName;
-    int sockfd, numbytes;
-    char recvBuf[MAX_DATA_SIZE];
-    struct  addrinfo hints, *servinfo, *p;
+    int sockfd;
+    struct addrinfo hints, *servinfo, *p;
     int rv;
     char s[INET6_ADDRSTRLEN];
 
@@ -50,7 +41,7 @@ bool ClientSocket::talkToServer(std::string & req, std::string & recvMsg) {
     hints.ai_socktype = SOCK_STREAM;
 
     if ((rv = getaddrinfo(addr.c_str(), SERVER_PORT, &hints, &servinfo) != 0)) { // servinfo: linked list
-        std::cerr << "getaddrinfo: " << gai_strerror(rv) << "\n";
+        std::cerr << "proxy ClientSocket getaddrinfo: " << gai_strerror(rv) << "\n";
         return false;
     }
 
@@ -74,31 +65,36 @@ bool ClientSocket::talkToServer(std::string & req, std::string & recvMsg) {
     }
 
     inet_ntop(p->ai_family, this->getInAddr((struct sockaddr *)p->ai_addr), s, sizeof s);
-    // std::cout << "proxy ClientSocket: connecting to " << s << "\n";
 
     freeaddrinfo(servinfo);
+    this->sockfd = sockfd;
 
+    return true;
+}
+
+// open a socket to the real server, send request 
+// to the server and receive response from it
+bool ClientSocket::socketSend(std::string & req) {
+    int sockfd = this->sockfd;
     if ((send(sockfd, req.c_str(), strlen(req.c_str()), 0)) == -1) {
         std::perror("send");
         return false;
     }
-    // std::cout << "proxy ClientSocket: sending " << req.c_str() << "\n";
 
+    return true;
+}
+
+bool ClientSocket::socketRecv(std::string & recvMsg) {
+    int sockfd = this->sockfd;
+    int numbytes;
+    char recvBuf[MAX_DATA_SIZE];
     while ((numbytes = recv(sockfd, recvBuf, MAX_DATA_SIZE - 1, 0)) > 0) {
         recvBuf[numbytes] = '\0';
         recvMsg += recvBuf;
     }
-
-    // if ((numbytes = recv(sockfd, recvBuf, MAX_DATA_SIZE - 1, 0)) == -1) {
-    //     std::perror("recv");
-    //     return false;
-    // }
-    // recvBuf[numbytes] = '\0';
-    // recvMsg = recvBuf;
-
-    close(sockfd);
-
     return true;
 }
+
+void ClientSocket::closeSocket() {close(this->sockfd);}
 
 #endif
