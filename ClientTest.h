@@ -1,74 +1,23 @@
 #ifndef __CLIENTTEST_H__
 #define __CLIENTTEST_H__
 
+#include "utils.h"
 #include "ClientSocket.h"
 #include <cassert>
-#include <sstream>
+//#include <sstream>
 #include <algorithm>
-
-void printALine(size_t size) {
-    std::string line;
-    for (size_t i = 0; i < size; i++) {
-        line += '-';
-    }
-    std::cout << line << "\n";
-}
-
-// Begin citation
-// https://www.techiedelight.com/trim-string-cpp-remove-leading-trailing-spaces/
-std::string ltrim(const std::string & s) {
-	size_t start = s.find_first_not_of(' ');
-	return (start == std::string::npos) ? "" : s.substr(start);
-}
-
-std::string rtrim(const std::string & s) {
-	size_t end = s.find_last_not_of(' ');
-	// return (end == std::string::npos) ? "" : s.substr(0, end + 1);
-    return (end == std::string::npos) ? "" : s.substr(0, end);  // remove '\n'
-}
-
-std::string trim(const std::string & s) {
-	return rtrim(ltrim(s));
-}
-// End of citation
-
-//-2: not found
-//-1: error
-// 0: found
-// 1: found previously
-int findHostName(bool & isfound, const std::string & lineMsg, std::string & hostName) {
-    if (isfound) {return 1;}
-    std::string lineMsgLower = lineMsg;
-    for (size_t i = 0; i < lineMsgLower.size(); i++) {
-        lineMsgLower[i] = tolower(lineMsgLower[i]);
-    }
-    if (size_t loc = lineMsgLower.find("host:") != std::string::npos) {
-        isfound = true;
-        loc += 5;  // size of "host:"
-        while (isspace(lineMsg[loc]) && lineMsg[loc] != '\n') {
-            loc++;
-        }
-        if (lineMsg[loc] == '\n' || lineMsg[loc] == '\0') {
-            std::cerr << "client test: syntax error on HOST line";
-            return -1;
-        }
-        hostName = lineMsg.substr(loc, lineMsg.size() - loc);
-        return 0;
-    }
-    return -2;
-} 
 
 bool readInput(FILE * in, std::string & hostName, std::string & request) {
     assert(in != NULL);
     char * line = NULL;
     size_t sz;
-    bool isfound = false;
+    bool isFound = false;
     while (getline(&line, &sz, in) != -1) {
         const char * temp = line;
         std::string lineMsg = temp;
         lineMsg = trim(lineMsg);
 
-        if (findHostName(isfound, lineMsg, hostName) == -1) {
+        if (parseHostNameFromALine(isFound, lineMsg, hostName) == -1) {
             return false;
         }
         
@@ -94,6 +43,45 @@ bool closeFile(FILE * f, const char * fileNm) {
     return false;
   }
   return true;
+}
+
+bool testClient(int argc, char *argv[]) {
+    std::string url;  //= "www.google.com";
+    std::string req;  //= "GET / HTTP/1.1\r\nHost: " + url + "\r\nConnection: close" + "\r\n\r\n";
+    std::string recvMsg;
+    
+    if (argc == 1) {
+        if (!readInput(stdin, url, req)) {return false;}
+    }
+    else if (argc > 2) {
+        std::cerr << "usage: hwk2_proxy test_file.txt" << "\n";
+        return false;
+    }
+    else {
+        FILE * f = fopen(argv[1], "r");
+        if (f == NULL) {
+            std::cerr << "An exception happened when opening '" << argv[1] << "\n";
+            return false;
+        }
+        printALine(32);
+        std::cout << "Begin of testcase\n";
+        if (!readInput(f, url, req)) {return false;}
+        if (!closeFile(f, argv[1])) {return false;}
+        std::cout << "End of testcase\n";
+    }
+    printALine(32);
+    std::cout << "hostName:\n" << url << "\n";
+    std::cout << "Begin of request\n" << req << "End of request\n";
+    
+    ClientSocket clientSocket(url);
+    if (!clientSocket.setup()) {return false;}
+    if (!clientSocket.socketSend(req)) {return false;}
+    if (!clientSocket.socketRecv(recvMsg)) {return false;}
+    clientSocket.closeSocket();
+    printALine(32);
+    std::cout << "Proxy client received:\n" << recvMsg << "\n";
+
+    return true;
 }
 
 #endif

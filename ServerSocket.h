@@ -14,9 +14,12 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <sys/time.h>
+#include <unistd.h>	 // usleep
 
 #define PORT "12345"  // the port users will be connecting to
 #define BACKLOG 1   // how many pending connections queue will hold
+#define SERVER_RECV_TIME_OUT 1  // max waiting seconds for receiving
 
 void sigchld_handler(int s)
 {
@@ -116,6 +119,8 @@ bool ServerSocket::setup() {
     return true;
 }
 
+// Begin citation
+// https://www.binarytides.com/receive-full-data-with-recv-socket-function-in-c/
 bool ServerSocket::socketRecv(std::string & recvMsg) {
     their_addr = this->their_addr;
     new_fd = this->new_fd;
@@ -126,14 +131,34 @@ bool ServerSocket::socketRecv(std::string & recvMsg) {
     // close(sockfd); // child doesn't need the listener
     int numbytes;
     char recvBuf[MAX_DATA_SIZE];
-    if ((numbytes = recv(new_fd, recvBuf, MAX_DATA_SIZE - 1, 0)) != -1) {
-        recvBuf[numbytes] = '\0';
-        recvMsg += recvBuf;
+
+    struct  timeval begin, now;
+    double timeDiff;
+    gettimeofday(&begin, NULL);
+    while (1) { 
+        gettimeofday(&now, NULL);
+        timeDiff = (now.tv_sec - begin.tv_sec) + 1e-6 * (now.tv_usec - begin.tv_usec);
+        // If you got some data, then break after timeout
+        if (recvMsg.size() > 0 && timeDiff > SERVER_RECV_TIME_OUT) {
+            break;
+        }
+        // If you got no data at all, wait a little longer, twice the timeout
+        else if (timeDiff > SERVER_RECV_TIME_OUT * 2) {break;}
+        if ((numbytes = recv(new_fd, recvBuf, MAX_DATA_SIZE - 1, MSG_DONTWAIT)) != -1) {
+            recvBuf[numbytes] = '\0';
+            recvMsg += recvBuf;
+            gettimeofday(&begin , NULL);
+        }
+        else {
+            // If nothing was received then we want to wait a little before trying again, 0.1 seconds
+            usleep(100000);
+        }
     }
     // close(new_fd);
 
     return true;
 }
+// End of citation
 
 bool ServerSocket::socketSend(std::string & sendMsg) {
     their_addr = this->their_addr;
@@ -143,8 +168,6 @@ bool ServerSocket::socketSend(std::string & sendMsg) {
         this->getInAddr((struct sockaddr *)&their_addr), s, sizeof s);
 
     // close(sockfd); // child doesn't need the listener
-    // int numbytes;
-    // char recvBuf[MAX_DATA_SIZE];
 
     if (send(new_fd, sendMsg.c_str(), strlen(sendMsg.c_str()), 0) == -1) {
         std::perror("send");
