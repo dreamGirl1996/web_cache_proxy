@@ -133,6 +133,8 @@ bool ClientSocket::socketRecv(std::string & recvMsg) {
 }
 // End of citation
 
-void ClientSocket::closeSocket() {close(this->sockfd);}
+void ClientSocket::closeSocket() {
+    if (this->sockfd != -1) {close(this->sockfd);}
+}
 
 #endif

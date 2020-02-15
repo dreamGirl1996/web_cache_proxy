@@ -191,8 +191,8 @@ bool ServerSocket::socketSend(std::string & sendMsg) {
 }
 
 void ServerSocket::closeSocket() {
-    close(this->sockfd);
-    close(this->new_fd);
+    if (this->sockfd != -1) {close(this->sockfd);}
+    if (this->new_fd != -1) {close(this->new_fd);}
 }
 
 #endif

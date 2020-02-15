@@ -5,8 +5,16 @@
 #include "ServerTest.h"
 
 int main(int argc, char *argv[]) {
-    // if (!testServer(argc, argv)) {return EXIT_FAILURE;}
-    // if (!testClient(argc, argv)) {return EXIT_FAILURE;}
-    if (!testProxy(argc, argv)) {return EXIT_FAILURE;}
+    while (1) {
+        try {
+            // if (!testServer(argc, argv)) {return EXIT_FAILURE;}
+            // if (!testClient(argc, argv)) {return EXIT_FAILURE;}
+            if (!testProxy(argc, argv)) {return EXIT_FAILURE;}
+        }
+        catch (std::invalid_argument & e) {
+            std::cerr << e.what() << "\n";
+            return EXIT_FAILURE;
+        }
+    }
     return EXIT_SUCCESS;
 }
