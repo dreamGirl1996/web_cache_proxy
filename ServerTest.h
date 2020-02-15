@@ -12,10 +12,8 @@ bool testServer(int argc, char *argv[]) {
     std::string sendMsg = "Hello World!!!";
 
     ServerSocket serverSocket;
-    if (!serverSocket.setup()) {return false;}
     if (!serverSocket.socketRecv(recvMsg)) {return false;}
     if (!serverSocket.socketSend(sendMsg)) {return false;}
-    serverSocket.closeSocket();
 
     printALine(32);
     std::cout << "Proxy server received:\n" << recvMsg << "\n";

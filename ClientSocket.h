@@ -14,6 +14,8 @@
 // #include <arpa/inet.h>
 #include <sys/time.h>
 #include <unistd.h>	 // usleep
+#include <exception>
+#include <sstream>
 
 #define CLIENT_RECV_TIME_OUT 1
 
@@ -21,17 +23,27 @@ class ClientSocket : public Socket {
     public:
     std::string & hostName;
     ClientSocket(std::string & hostName);
-    bool setup();
-    // bool talk(std::string & req, std::string &recvMsg);
-    bool socketSend(std::string & sendMsg);
-    bool socketRecv(std::string & recvMsg);
-    void closeSocket();
+    virtual ~ClientSocket();
+    virtual bool socketSend(std::string & sendMsg);
+    virtual bool socketRecv(std::string & recvMsg);
+    
+    protected:
+    virtual bool setup();
+    virtual void closeSocket();
 
     private:
     int sockfd;
 };
 
-ClientSocket::ClientSocket(std::string & hostName) : hostName(hostName), sockfd(-1) {}
+ClientSocket::ClientSocket(std::string & hostName) : Socket(), hostName(hostName), sockfd(-1) {
+    if(!this->setup()) {
+        std::stringstream ess;
+        ess << __func__;
+        throw std::invalid_argument(ess.str());
+    }
+}
+
+ClientSocket::~ClientSocket() {this->closeSocket();}
 
 bool ClientSocket::setup() {
     std::string addr = this->hostName;

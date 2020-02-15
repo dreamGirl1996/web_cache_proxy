@@ -16,6 +16,8 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <unistd.h>	 // usleep
+#include <exception>
+#include <sstream>
 
 #define PORT "12345"  // the port users will be connecting to
 #define BACKLOG 1   // how many pending connections queue will hold
@@ -33,19 +35,30 @@ void sigchld_handler(int s)
 
 class ServerSocket : public Socket {
     public:
-    bool setup();
-    bool socketRecv(std::string & recvMsg);
-    bool socketSend(std::string & recvSend);
-    void closeSocket();
+    ServerSocket();
+    virtual ~ServerSocket();    
+    virtual bool socketRecv(std::string & recvMsg);
+    virtual bool socketSend(std::string & sendMsg);
+
+    protected:
+    virtual bool setup();
+    virtual void closeSocket();
 
     private:
-    // void sigchld_handler(int s);
     struct sockaddr_storage their_addr;
     int sockfd;
     int new_fd;
 };
 
-// ServerSocket::ServerSocket() {}
+ServerSocket::ServerSocket() : Socket(), sockfd(-1), new_fd(-1) {
+    if(!this->setup()) {
+        std::stringstream ess;
+        ess << __func__;
+        throw std::invalid_argument(ess.str());
+    }
+}
+
+ServerSocket::~ServerSocket() {this->closeSocket();}
 
 bool ServerSocket::setup() {
     int sockfd;  // listen on sock_fd, new connection on new_fd

@@ -75,10 +75,8 @@ bool testClient(int argc, char *argv[]) {
     std::cout << "Begin of request\n" << req << "End of request\n";
     
     ClientSocket clientSocket(url);
-    if (!clientSocket.setup()) {return false;}
     if (!clientSocket.socketSend(req)) {return false;}
     if (!clientSocket.socketRecv(recvMsg)) {return false;}
-    clientSocket.closeSocket();
     printALine(32);
     std::cout << "Proxy client received:\n" << recvMsg << "\n";
 

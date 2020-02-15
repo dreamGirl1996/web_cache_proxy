@@ -9,12 +9,16 @@
 #define MAX_DATA_SIZE 1024
 
 class Socket {
-    // public:
-    // virtual bool talk(std::string & req, std::string &recvMsg) = 0;
-    // virtual bool talk() = 0;
+    public:
+    Socket() {}
+    virtual ~Socket() {}
+    virtual bool socketSend(std::string & sendMsg) = 0;
+    virtual bool socketRecv(std::string & recvMsg) = 0;
 
     protected:
     void *getInAddr(struct sockaddr *sa);
+    virtual bool setup() = 0;
+    virtual void closeSocket() = 0;
 };
 
 // get socket address, through ipv4 or ipv6

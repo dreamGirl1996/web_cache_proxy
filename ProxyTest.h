@@ -11,7 +11,6 @@ bool testProxy(int argc, char *argv[]) {
     std::string recvFromServer;
     // Receive request from user's browser
     ServerSocket serverSocket;
-    if (!serverSocket.setup()) {return false;}
     if (!serverSocket.socketRecv(recvFromUser)) {return false;}
     // Parse the request from the user
     std::string hostName;
@@ -20,7 +19,6 @@ bool testProxy(int argc, char *argv[]) {
 
     // Send user's request to the Web server, and receive the response from that Web server
     ClientSocket clientSocket(hostName);
-    if (!clientSocket.setup()) {return false;}
     if (!clientSocket.socketSend(recvFromUser)) {return false;}
     if (!clientSocket.socketRecv(recvFromServer)) {return false;}
     // Parse the response from the Web server
@@ -36,9 +34,6 @@ bool testProxy(int argc, char *argv[]) {
     std::cout << "hostName:\n" << hostName << "\n";
     printALine(32);
     std::cout << "Proxy client received:\n" << recvFromServer << "\n";
-
-    serverSocket.closeSocket();
-    clientSocket.closeSocket();
 
     return true;
 }
