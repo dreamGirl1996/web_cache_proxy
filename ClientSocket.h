@@ -15,7 +15,7 @@
 #include <sys/time.h>
 #include <unistd.h>	 // usleep
 
-#define CLIENT_RECV_TIME_OUT 2 
+#define CLIENT_RECV_TIME_OUT 1
 
 class ClientSocket : public Socket {
     public:
@@ -110,7 +110,7 @@ bool ClientSocket::socketRecv(std::string & recvMsg) {
         if ((numbytes = recv(sockfd, recvBuf, MAX_DATA_SIZE - 1, MSG_DONTWAIT)) != -1) {
             recvBuf[numbytes] = '\0';
             recvMsg += recvBuf;
-            gettimeofday(&begin , NULL);
+            // gettimeofday(&begin , NULL);
         }
         else {
             // If nothing was received then we want to wait a little before trying again, 0.1 seconds

@@ -71,6 +71,7 @@ bool testClient(int argc, char *argv[]) {
     }
     printALine(32);
     std::cout << "hostName:\n" << url << "\n";
+    printALine(32);
     std::cout << "Begin of request\n" << req << "End of request\n";
     
     ClientSocket clientSocket(url);

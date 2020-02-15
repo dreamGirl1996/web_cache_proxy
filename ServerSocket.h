@@ -147,7 +147,7 @@ bool ServerSocket::socketRecv(std::string & recvMsg) {
         if ((numbytes = recv(new_fd, recvBuf, MAX_DATA_SIZE - 1, MSG_DONTWAIT)) != -1) {
             recvBuf[numbytes] = '\0';
             recvMsg += recvBuf;
-            gettimeofday(&begin , NULL);
+            // gettimeofday(&begin , NULL);
         }
         else {
             // If nothing was received then we want to wait a little before trying again, 0.1 seconds
