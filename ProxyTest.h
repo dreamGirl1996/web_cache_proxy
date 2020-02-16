@@ -11,6 +11,7 @@ bool testProxy(int argc, char *argv[]) {
     std::string recvFromServer;
     // Receive request from user's browser
     ServerSocket serverSocket;
+    if (!serverSocket.socketAccept()) {return false;}
     if (!serverSocket.socketRecv(recvFromUser)) {return false;}
     // Parse the request from the user
     std::string hostName;

@@ -47,7 +47,6 @@ ClientSocket::~ClientSocket() {this->closeSocket();}
 
 bool ClientSocket::setup() {
     std::string addr = this->hostName;
-    int sockfd;
     struct addrinfo hints, *servinfo, *p;
     int rv;
     char s[INET6_ADDRSTRLEN];
@@ -63,12 +62,12 @@ bool ClientSocket::setup() {
 
     // loop through all the results and connect to the first we can
     for (p = servinfo; p != NULL; p = p->ai_next) {
-        if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+        if ((this->sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
             std::perror("proxy ClientSocket: socket");
             continue;
         }
-        if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-            close(sockfd);
+        if (connect(this->sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+            close(this->sockfd);
             std::perror("proxy ClientSocket: connect");
             continue;
         }
@@ -83,7 +82,6 @@ bool ClientSocket::setup() {
     inet_ntop(p->ai_family, this->getInAddr((struct sockaddr *)p->ai_addr), s, sizeof s);
 
     freeaddrinfo(servinfo);
-    this->sockfd = sockfd;
 
     return true;
 }
@@ -91,8 +89,7 @@ bool ClientSocket::setup() {
 // open a socket to the real server, send request 
 // to the server and receive response from it
 bool ClientSocket::socketSend(std::string & sendMsg) {
-    int sockfd = this->sockfd;
-    if ((send(sockfd, sendMsg.c_str(), strlen(sendMsg.c_str()), 0)) == -1) {
+    if ((send(this->sockfd, sendMsg.c_str(), strlen(sendMsg.c_str()), 0)) == -1) {
         std::perror("send");
         return false;
     }
@@ -103,7 +100,6 @@ bool ClientSocket::socketSend(std::string & sendMsg) {
 // Begin citation
 // https://www.binarytides.com/receive-full-data-with-recv-socket-function-in-c/
 bool ClientSocket::socketRecv(std::string & recvMsg) {
-    int sockfd = this->sockfd;
     int numbytes;
     char recvBuf[MAX_DATA_SIZE];
 
@@ -119,7 +115,7 @@ bool ClientSocket::socketRecv(std::string & recvMsg) {
         }
         // If you got no data at all, wait a little longer, twice the timeout
         else if (timeDiff > CLIENT_RECV_TIME_OUT * 2) {break;}
-        if ((numbytes = recv(sockfd, recvBuf, MAX_DATA_SIZE - 1, MSG_DONTWAIT)) != -1) {
+        if ((numbytes = recv(this->sockfd, recvBuf, MAX_DATA_SIZE - 1, MSG_DONTWAIT)) != -1) {
             recvBuf[numbytes] = '\0';
             recvMsg += recvBuf;
             // gettimeofday(&begin , NULL);
