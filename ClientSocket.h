@@ -17,7 +17,7 @@
 #include <exception>
 #include <sstream>
 
-#define CLIENT_RECV_TIME_OUT 0.5
+#define CLIENT_RECV_TIME_OUT 1
 
 class ClientSocket : public Socket {
     public:

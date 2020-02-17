@@ -28,9 +28,6 @@ void testProxyHelper(ServerSocket & serverSocket, connect_pair_t & connectPair) 
             if (!serverSocket.socketRecv(recvFromUser, connectPair)) {return;}
         }
         // Parse the request from the user
-
-        printALine(32);
-        std::cout << "Proxy server received:\n" << recvFromUser << "\n";
         if (!parseObjectFromString(recvFromUser, hostName, parseHostNameFromALine)) {
             cleanHeaders(hostName, method);
             return;
@@ -55,6 +52,10 @@ void testProxyHelper(ServerSocket & serverSocket, connect_pair_t & connectPair) 
         if (!clientSocket.socketRecv(recvFromServer)) {return;}
         // Parse the response from the Web server
         // End of parsing
+        printALine(32);
+        std::cout << "Proxy server received:\n" << recvFromUser << "\n";
+        printALine(32);
+        std::cout << "Proxy server received: \n" << recvFromServer << "\n";
 
         // Send Web server's response back to the user's browser
         // std::string sendMsg = "Hello World!";
@@ -83,8 +84,9 @@ int main(int argc, char *argv[]) {
         }
 
         // connect_pair_t connectPair = serverSocket.socketAccept();
-        // std::thread th(testProxyHelper, std::ref(serverSocket), 
-        // std::ref(recvFromUser), std::ref(recvFromServer), std::ref(connectPair));
+        // std::thread th(testProxyHelper, std::ref(serverSocket)
+        // , std::ref(connectPair));
+        // th.join();
 
         ////// //////
         // if (!serverSocket.socketAccept()) {return EXIT_FAILURE;}
