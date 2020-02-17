@@ -18,7 +18,7 @@
 // #include <unistd.h>	 // usleep
 #include <exception>
 #include <sstream>
-#include <queue>
+// #include <queue>
 
 #define PORT "12345"  // the port users will be connecting to
 #define BACKLOG 1   // how many pending connections queue will hold
@@ -35,7 +35,7 @@ void sigchld_handler(int s)
 }
 
 typedef std::pair<int, struct sockaddr_storage> connect_pair_t;
-typedef std::queue<connect_pair_t > connect_pair_queue_t;
+// typedef std::queue<connect_pair_t > connect_pair_queue_t;
 class ServerSocket : public Socket {
     public:
     ServerSocket();
@@ -43,8 +43,8 @@ class ServerSocket : public Socket {
     // std::queue<int> & get_new_fd_queue();
     // connect_pair_queue_t & getConnectPairQueue();
     virtual connect_pair_t socketAccept();
-    virtual bool socketRecv(std::string & recvMsg, connect_pair_t & connectPair);
-    virtual bool socketSend(std::string & sendMsg, connect_pair_t & connectPair);
+    virtual bool socketRecv(std::vector<char> & recvMsg, connect_pair_t & connectPair);
+    virtual bool socketSend(std::vector<char> & sendMsg, connect_pair_t & connectPair);
 
     protected:
     virtual bool setup();
@@ -169,7 +169,7 @@ connect_pair_t ServerSocket::socketAccept() {
 
 // Begin citation
 // https://www.binarytides.com/receive-full-data-with-recv-socket-function-in-c/
-bool ServerSocket::socketRecv(std::string & recvMsg, connect_pair_t & connectPair) {
+bool ServerSocket::socketRecv(std::vector<char> & recvMsg, connect_pair_t & connectPair) {
     if (connectPair.first == -1) {
         std::cerr << "Invalid new_fd in " << __func__ << "\n";
         return false;
@@ -194,10 +194,14 @@ bool ServerSocket::socketRecv(std::string & recvMsg, connect_pair_t & connectPai
         }
         // If you got no data at all, wait a little longer, twice the timeout
         else if (timeDiff > SERVER_RECV_TIME_OUT * 2) {break;}
-        if ((numbytes = recv(connectPair.first, recvBuf, MAX_DATA_SIZE - 1, MSG_DONTWAIT)) != -1) {
-            recvBuf[numbytes] = '\0';
-            recvMsg += recvBuf;
-            // gettimeofday(&begin , NULL);
+        // if ((numbytes = recv(connectPair.first, recvBuf, MAX_DATA_SIZE - 1, MSG_DONTWAIT)) != -1) {
+        //     recvBuf[numbytes] = '\0';
+        //     recvMsg += recvBuf;
+        //     // gettimeofday(&begin , NULL);
+        // }
+        memset(recvBuf, 0, sizeof recvBuf);
+        if ((numbytes = recv(connectPair.first, recvBuf, MAX_DATA_SIZE, MSG_DONTWAIT)) != -1) {
+            recvMsg.push_back(recvBuf[0]);
         }
         else {
             // If nothing was received then we want to wait a little before trying again, 0.1 seconds
@@ -205,13 +209,16 @@ bool ServerSocket::socketRecv(std::string & recvMsg, connect_pair_t & connectPai
             usleep(1000);
         }
     }
+    if (recvMsg.size() > 0) {
+        recvMsg.push_back('\0');
+    }
     // close(new_fd);
 
     return true;
 }
 // End of citation
 
-bool ServerSocket::socketSend(std::string & sendMsg, connect_pair_t & connectPair) {
+bool ServerSocket::socketSend(std::vector<char> & sendMsg, connect_pair_t & connectPair) {
     if (connectPair.first == -1) {
         std::cerr << "Invalid new_fd in " << __func__ << "\n";
         return false;
@@ -222,7 +229,7 @@ bool ServerSocket::socketSend(std::string & sendMsg, connect_pair_t & connectPai
 
     // close(sockfd); // child doesn't need the listener
 
-    if (send(connectPair.first, sendMsg.c_str(), strlen(sendMsg.c_str()), 0) == -1) {
+    if (send(connectPair.first, sendMsg.data(), sendMsg.size(), 0) == -1) {
         std::perror("send");
     }
     // close(new_fd);

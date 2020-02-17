@@ -21,14 +21,16 @@
 
 class ClientSocket : public Socket {
     public:
-    std::string & hostName;
-    std::string & port; 
-    ClientSocket(std::string & hostName, std::string & port);
+    std::vector<char> & getHostName() {return this->hostName;}
+    std::vector<char> & getPort() {return this->port;}
+    ClientSocket(std::vector<char> hostName, std::vector<char> port);
     virtual ~ClientSocket();
-    virtual bool socketSend(std::string & sendMsg);
-    virtual bool socketRecv(std::string & recvMsg);
+    virtual bool socketSend(std::vector<char> & sendMsg);
+    virtual bool socketRecv(std::vector<char> & recvMsg);
     
     protected:
+    std::vector<char> hostName;
+    std::vector<char> port; 
     virtual bool setup();
     virtual void closeSocket();
 
@@ -36,7 +38,7 @@ class ClientSocket : public Socket {
     int sockfd;
 };
 
-ClientSocket::ClientSocket(std::string & hostName, std::string & port) : \
+ClientSocket::ClientSocket(std::vector<char> hostName, std::vector<char> port) : \
 Socket(), hostName(hostName), port(port), sockfd(-1) {
     if(!this->setup()) {
         std::stringstream ess;
@@ -48,7 +50,7 @@ Socket(), hostName(hostName), port(port), sockfd(-1) {
 ClientSocket::~ClientSocket() {this->closeSocket();}
 
 bool ClientSocket::setup() {
-    std::string addr = this->hostName;
+    // std::string addr = this->hostName;
     struct addrinfo hints, *servinfo, *p;
     int rv;
     char s[INET6_ADDRSTRLEN];
@@ -57,9 +59,9 @@ bool ClientSocket::setup() {
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
 
-    if ((rv = getaddrinfo(addr.c_str(), this->port.c_str(), &hints, &servinfo) != 0)) { // servinfo: linked list
+    if ((rv = getaddrinfo(this->hostName.data(), this->port.data(), &hints, &servinfo)) != 0) { // servinfo: linked list
         std::cerr << "proxy ClientSocket getaddrinfo: " << gai_strerror(rv) << "\n";
-        std::cerr << "hostName: " << addr << "\n";
+        std::cerr << "hostName: " << this->hostName.data() << "\n";
         return false;
     }
 
@@ -91,8 +93,8 @@ bool ClientSocket::setup() {
 
 // open a socket to the real server, send request 
 // to the server and receive response from it
-bool ClientSocket::socketSend(std::string & sendMsg) {
-    if ((send(this->sockfd, sendMsg.c_str(), strlen(sendMsg.c_str()), 0)) == -1) {
+bool ClientSocket::socketSend(std::vector<char> & sendMsg) {
+    if ((send(this->sockfd, sendMsg.data(), sendMsg.size(), 0)) == -1) {
         std::perror("send");
         return false;
     }
@@ -102,7 +104,7 @@ bool ClientSocket::socketSend(std::string & sendMsg) {
 
 // Begin citation
 // https://www.binarytides.com/receive-full-data-with-recv-socket-function-in-c/
-bool ClientSocket::socketRecv(std::string & recvMsg) {
+bool ClientSocket::socketRecv(std::vector<char> & recvMsg) {
     int numbytes;
     char recvBuf[MAX_DATA_SIZE];
 
@@ -118,16 +120,23 @@ bool ClientSocket::socketRecv(std::string & recvMsg) {
         }
         // If you got no data at all, wait a little longer, twice the timeout
         else if (timeDiff > CLIENT_RECV_TIME_OUT * 2) {break;}
-        if ((numbytes = recv(this->sockfd, recvBuf, MAX_DATA_SIZE - 1, MSG_DONTWAIT)) != -1) {
-            recvBuf[numbytes] = '\0';
-            recvMsg += recvBuf;
-            // gettimeofday(&begin , NULL);
+        // if ((numbytes = recv(this->sockfd, recvBuf, MAX_DATA_SIZE - 1, MSG_DONTWAIT)) != -1) {
+        //     recvBuf[numbytes] = '\0';
+        //     recvMsg += recvBuf;
+        //     // gettimeofday(&begin , NULL);
+        // }
+        memset(recvBuf, 0, sizeof recvBuf);
+        if ((numbytes = recv(this->sockfd, recvBuf, MAX_DATA_SIZE, MSG_DONTWAIT)) != -1) {
+            recvMsg.push_back(recvBuf[0]);
         }
         else {
             // If nothing was received then we want to wait a little before trying again, 0.1 seconds
             // usleep(100000); // original
             usleep(1000);
         }
+    }
+    if (recvMsg.size() > 0) {
+        recvMsg.push_back('\0');
     }
     return true;
 }

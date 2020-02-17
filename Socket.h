@@ -5,10 +5,11 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <vector>
 
-#define SERVER_PORT_80 "80"
-#define SERVER_PORT_443 "443"
-#define MAX_DATA_SIZE 1024
+// #define SERVER_PORT_80 "80"
+// #define SERVER_PORT_443 "443"
+#define MAX_DATA_SIZE 1
 
 void closeSockfd(int & sockfd) {
     if (sockfd != -1) {close(sockfd);}
