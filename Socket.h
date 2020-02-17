@@ -4,16 +4,22 @@
 #include <iostream>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
-#define SERVER_PORT "80"
+#define SERVER_PORT_80 "80"
+#define SERVER_PORT_443 "443"
 #define MAX_DATA_SIZE 1024
+
+void closeSockfd(int & sockfd) {
+    if (sockfd != -1) {close(sockfd);}
+}
 
 class Socket {
     public:
     Socket() {}
     virtual ~Socket() {}
-    virtual bool socketSend(std::string & sendMsg) = 0;
-    virtual bool socketRecv(std::string & recvMsg) = 0;
+    // virtual bool socketSend(std::string & sendMsg) = 0;
+    // virtual bool socketRecv(std::string & recvMsg) = 0;
 
     protected:
     void *getInAddr(struct sockaddr *sa);

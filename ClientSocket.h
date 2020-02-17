@@ -5,7 +5,7 @@
 #include <iostream>
 #include <cstdio>
 #include <cstdlib>
-#include <unistd.h>
+// #include <unistd.h>
 #include <cerrno>
 #include <cstring>
 #include <netdb.h>
@@ -13,16 +13,17 @@
 // #include <sys/socket.h>
 // #include <arpa/inet.h>
 #include <sys/time.h>
-#include <unistd.h>	 // usleep
+// #include <unistd.h>	 // usleep
 #include <exception>
 #include <sstream>
 
-#define CLIENT_RECV_TIME_OUT 1
+#define CLIENT_RECV_TIME_OUT 0.5
 
 class ClientSocket : public Socket {
     public:
     std::string & hostName;
-    ClientSocket(std::string & hostName);
+    std::string & port; 
+    ClientSocket(std::string & hostName, std::string & port);
     virtual ~ClientSocket();
     virtual bool socketSend(std::string & sendMsg);
     virtual bool socketRecv(std::string & recvMsg);
@@ -35,7 +36,8 @@ class ClientSocket : public Socket {
     int sockfd;
 };
 
-ClientSocket::ClientSocket(std::string & hostName) : Socket(), hostName(hostName), sockfd(-1) {
+ClientSocket::ClientSocket(std::string & hostName, std::string & port) : \
+Socket(), hostName(hostName), port(port), sockfd(-1) {
     if(!this->setup()) {
         std::stringstream ess;
         ess << __func__;
@@ -55,8 +57,9 @@ bool ClientSocket::setup() {
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
 
-    if ((rv = getaddrinfo(addr.c_str(), SERVER_PORT, &hints, &servinfo) != 0)) { // servinfo: linked list
+    if ((rv = getaddrinfo(addr.c_str(), this->port.c_str(), &hints, &servinfo) != 0)) { // servinfo: linked list
         std::cerr << "proxy ClientSocket getaddrinfo: " << gai_strerror(rv) << "\n";
+        std::cerr << "hostName: " << addr << "\n";
         return false;
     }
 
@@ -122,7 +125,8 @@ bool ClientSocket::socketRecv(std::string & recvMsg) {
         }
         else {
             // If nothing was received then we want to wait a little before trying again, 0.1 seconds
-            usleep(100000);
+            // usleep(100000); // original
+            usleep(1000);
         }
     }
     return true;
@@ -130,7 +134,8 @@ bool ClientSocket::socketRecv(std::string & recvMsg) {
 // End of citation
 
 void ClientSocket::closeSocket() {
-    if (this->sockfd != -1) {close(this->sockfd);}
+    // if (this->sockfd != -1) {close(this->sockfd);}
+    closeSockfd(this->sockfd);
 }
 
 #endif

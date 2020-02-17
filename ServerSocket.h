@@ -4,7 +4,7 @@
 #include "Socket.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
+// #include <unistd.h>
 #include <errno.h>
 #include <string.h>
 #include <sys/types.h>
@@ -15,13 +15,14 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <sys/time.h>
-#include <unistd.h>	 // usleep
+// #include <unistd.h>	 // usleep
 #include <exception>
 #include <sstream>
+#include <queue>
 
 #define PORT "12345"  // the port users will be connecting to
 #define BACKLOG 1   // how many pending connections queue will hold
-#define SERVER_RECV_TIME_OUT 1  // max waiting seconds for receiving
+#define SERVER_RECV_TIME_OUT 0.5  // max waiting seconds for receiving
 
 void sigchld_handler(int s)
 {
@@ -33,25 +34,34 @@ void sigchld_handler(int s)
     errno = saved_errno;
 }
 
+typedef std::pair<int, struct sockaddr_storage> connect_pair_t;
+typedef std::queue<connect_pair_t > connect_pair_queue_t;
 class ServerSocket : public Socket {
     public:
     ServerSocket();
     virtual ~ServerSocket();
-    virtual bool socketAccept();
-    virtual bool socketRecv(std::string & recvMsg);
-    virtual bool socketSend(std::string & sendMsg);
+    // std::queue<int> & get_new_fd_queue();
+    // connect_pair_queue_t & getConnectPairQueue();
+    virtual connect_pair_t socketAccept();
+    virtual bool socketRecv(std::string & recvMsg, connect_pair_t & connectPair);
+    virtual bool socketSend(std::string & sendMsg, connect_pair_t & connectPair);
 
     protected:
     virtual bool setup();
     virtual void closeSocket();
 
     private:
-    struct sockaddr_storage their_addr;  // connector's address information
     int sockfd;  // listen on sock_fd, new connection on new_fd
-    int new_fd;
+    // struct sockaddr_storage their_addr;  // connector's address information
+    // // int new_fd;
+    // std::queue<int> new_fd_queue;
+    // connect_pair_queue_t connectPairQueue;
 };
 
-ServerSocket::ServerSocket() : Socket(), sockfd(-1), new_fd(-1) {
+// ServerSocket::ServerSocket() : Socket(), sockfd(-1), connectPairQueue() {
+// ServerSocket::ServerSocket() : Socket(), sockfd(-1), their_addr(), new_fd_queue() {
+// ServerSocket::ServerSocket() : Socket(), sockfd(-1), new_fd(-1) {
+ServerSocket::ServerSocket() : Socket(), sockfd(-1) {
     if(!this->setup()) {
         std::stringstream ess;
         ess << __func__;
@@ -60,6 +70,11 @@ ServerSocket::ServerSocket() : Socket(), sockfd(-1), new_fd(-1) {
 }
 
 ServerSocket::~ServerSocket() {this->closeSocket();}
+
+// std::queue<int> & ServerSocket::get_new_fd_queue() {return this->new_fd_queue;}
+// connect_pair_queue_t & ServerSocket::getConnectPairQueue() {
+//     return connectPairQueue;
+// }
 
 bool ServerSocket::setup() {
     struct addrinfo hints, *servinfo, *p;
@@ -120,23 +135,48 @@ bool ServerSocket::setup() {
     return true;
 }
 
-bool ServerSocket::socketAccept() {
+connect_pair_t ServerSocket::socketAccept() {
     socklen_t sin_size;
-    sin_size = sizeof this->their_addr;
-    this->new_fd = accept(this->sockfd, (struct sockaddr *)&(this->their_addr), &sin_size);
-    while (this->new_fd == -1) {
-        std::perror("proxy ServerSocket: accept");
-        continue;
+    // sin_size = sizeof this->their_addr;
+    struct sockaddr_storage their_addr;
+    sin_size = sizeof their_addr;
+
+    while (1) {
+        int new_fd = accept(
+            this->sockfd, (struct sockaddr *)&(their_addr), &sin_size);
+        if (new_fd == -1) {
+            std::perror("proxy ServerSocket: accept");
+            continue;
+        }
+        else {
+            // this->new_fd_queue.push(new_fd);
+            
+            connect_pair_t connectPair(new_fd, their_addr);
+            // this->connectPairQueue.push(connectPair);
+
+            // std::string addr(inet_ntoa(((struct sockaddr_in *)&(their_addr))->sin_addr));
+            // std::cout << addr << "\n";            
+
+            return connectPair;
+        }
     }
-    return true;
+    
+    std::stringstream ess;
+    ess << "accept error in ServerSocket::" << __func__;
+    throw std::invalid_argument(ess.str());
+    // return new_fd;
 }
 
 // Begin citation
 // https://www.binarytides.com/receive-full-data-with-recv-socket-function-in-c/
-bool ServerSocket::socketRecv(std::string & recvMsg) {
+bool ServerSocket::socketRecv(std::string & recvMsg, connect_pair_t & connectPair) {
+    if (connectPair.first == -1) {
+        std::cerr << "Invalid new_fd in " << __func__ << "\n";
+        return false;
+    }
     char s[INET6_ADDRSTRLEN];
-    inet_ntop(this->their_addr.ss_family,
-        this->getInAddr((struct sockaddr *)&(this->their_addr)), s, sizeof s);
+    inet_ntop(connectPair.second.ss_family,
+        this->getInAddr((struct sockaddr *)&connectPair.second), s, sizeof s);
 
     // close(sockfd); // child doesn't need the listener
     int numbytes;
@@ -154,14 +194,15 @@ bool ServerSocket::socketRecv(std::string & recvMsg) {
         }
         // If you got no data at all, wait a little longer, twice the timeout
         else if (timeDiff > SERVER_RECV_TIME_OUT * 2) {break;}
-        if ((numbytes = recv(this->new_fd, recvBuf, MAX_DATA_SIZE - 1, MSG_DONTWAIT)) != -1) {
+        if ((numbytes = recv(connectPair.first, recvBuf, MAX_DATA_SIZE - 1, MSG_DONTWAIT)) != -1) {
             recvBuf[numbytes] = '\0';
             recvMsg += recvBuf;
             // gettimeofday(&begin , NULL);
         }
         else {
             // If nothing was received then we want to wait a little before trying again, 0.1 seconds
-            usleep(100000);
+            // usleep(100000); // original
+            usleep(1000);
         }
     }
     // close(new_fd);
@@ -170,14 +211,18 @@ bool ServerSocket::socketRecv(std::string & recvMsg) {
 }
 // End of citation
 
-bool ServerSocket::socketSend(std::string & sendMsg) {
+bool ServerSocket::socketSend(std::string & sendMsg, connect_pair_t & connectPair) {
+    if (connectPair.first == -1) {
+        std::cerr << "Invalid new_fd in " << __func__ << "\n";
+        return false;
+    }
     char s[INET6_ADDRSTRLEN];
-    inet_ntop(this->their_addr.ss_family,
-        this->getInAddr((struct sockaddr *)&(this->their_addr)), s, sizeof s);
+    inet_ntop(connectPair.second.ss_family,
+        this->getInAddr((struct sockaddr *)&connectPair.second), s, sizeof s);
 
     // close(sockfd); // child doesn't need the listener
 
-    if (send(this->new_fd, sendMsg.c_str(), strlen(sendMsg.c_str()), 0) == -1) {
+    if (send(connectPair.first, sendMsg.c_str(), strlen(sendMsg.c_str()), 0) == -1) {
         std::perror("send");
     }
     // close(new_fd);
@@ -186,8 +231,18 @@ bool ServerSocket::socketSend(std::string & sendMsg) {
 }
 
 void ServerSocket::closeSocket() {
-    if (this->sockfd != -1) {close(this->sockfd);}
-    if (this->new_fd != -1) {close(this->new_fd);}
+    // if (this->sockfd != -1) {close(this->sockfd);}
+    // if (this->new_fd != -1) {close(this->new_fd);}
+    closeSockfd(this->sockfd);
+    // while (this->new_fd_queue.size() > 0) {
+    //     closeSockfd(this->new_fd_queue.front());
+    //     this->new_fd_queue.pop();
+    // }
+
+    // while (this->connectPairQueue.size() > 0) {
+    //     closeSockfd(this->connectPairQueue.front().first);
+    //     this->connectPairQueue.pop();
+    // }
 }
 
 #endif

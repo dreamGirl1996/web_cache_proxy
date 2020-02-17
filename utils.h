@@ -43,19 +43,45 @@ int parseHostNameFromALine(bool & isFound, const std::string & lineMsg, std::str
     if (size_t loc = lineMsgLower.find("host:") != std::string::npos) {
         isFound = true;
         loc += 5;  // size of "host:"
+        // while (isspace(lineMsg[loc]) && lineMsg[loc] != '\n' && lineMsg[loc] != ':') {
         while (isspace(lineMsg[loc]) && lineMsg[loc] != '\n') {
             loc++;
         }
+        // if (lineMsg[loc] == '\n' || lineMsg[loc] == '\0' || lineMsg[loc] == ':') {
         if (lineMsg[loc] == '\n' || lineMsg[loc] == '\0') {
             std::cerr << "client test: syntax error on HOST line when inplicenting " << \
             __func__ << "\n";
             return -1;
         }
         hostName = lineMsg.substr(loc, lineMsg.size() - loc);
+        if (hostName.find(":443") != std::string::npos) {
+            hostName = hostName.substr(0, hostName.size() - 4);
+        }
         return 0;
     }
     return -2;
 } 
+
+int parseMethodFromALine(bool & isFound, const std::string & lineMsg, std::string & method) {
+    if (isFound) {return 1;}
+    std::string lineMsgLower = lineMsg;
+    // for (size_t i = 0; i < lineMsgLower.size(); i++) {
+    //     lineMsgLower[i] = tolower(lineMsgLower[i]);
+    // }
+    if (lineMsg.find("GET") != std::string::npos) {
+        method = "GET";
+    }
+    else if (lineMsg.find("CONNECT") != std::string::npos) {
+        method = "CONNECT";
+    }
+    else if (lineMsg.find("POST") != std::string::npos) {
+        method = "POST";
+    }
+    else {
+        return -2;
+    }
+    return 0;
+}
 
 // isfound, lineMsg, Object
 typedef int (*parsingMethod) (bool &, const std::string &, std::string &);
