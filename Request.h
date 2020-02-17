@@ -35,14 +35,14 @@ bool Request::parseHostName() {
     if (pch != NULL) {
         pch = pch + 5;
         skipSpace(&pch);
-        while (*pch != '\n') {
+        while (*pch != '\r') {
             this->hostName.push_back(*pch);
             pch = pch + 1;
         }
     }
     if (this->hostName.size() > 0) {
         cstrToVectorChar(this->port, "80");
-        this->hostName.pop_back();  // remove '\r'
+        // this->hostName.pop_back();  // remove '\r'
     }
     for (size_t i = 0; i < this->hostName.size(); i++) {
         if (this->hostName[i] == ':') {

@@ -34,11 +34,11 @@ void testProxyHelper(ServerSocket & serverSocket, connect_pair_t & connectPair) 
         closeSockfd(connectPair.first);
         return;
     }
-    // printALine(32);
-    // std::cout << strlen(hostName.data()) << " hostName: " << hostName.data() << "\n";
-    // std::cout << strlen(port.data()) << " port: " << port.data() << "\n";
-    // std::cout << strlen(method.data()) << " method: " << method.data() << "\n";
-    // std::cout << "Proxy server received:\n" << recvFromUser.data() << "\n";
+    printALine(32);
+    std::cout << "hostName: [" << hostName.data() << "]\n";
+    std::cout << "port: [" << port.data() << "]\n";
+    std::cout << "method: [" << method.data() << "]\n\n";
+    std::cout << "Proxy server received:\n[" << recvFromUser.data() << "]\n";
     ClientSocket clientSocket(hostName, port);
     if (!clientSocket.socketSend(recvFromUser)) {
         closeSockfd(connectPair.first);
