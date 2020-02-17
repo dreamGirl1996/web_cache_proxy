@@ -46,7 +46,9 @@ bool Request::parseHostName() {
     }
     for (size_t i = 0; i < this->hostName.size(); i++) {
         if (this->hostName[i] == ':') {
-            cstrToVectorChar(this->port, "443");
+            if (i < this->hostName.size() - 1 && this->hostName[i+1] == '4') {
+                cstrToVectorChar(this->port, "443");
+            }
             while(this->hostName.back() != ':') {
                 this->hostName.pop_back();
             }
@@ -64,24 +66,12 @@ bool Request::parseMethod() {
     cleanVectorChar(this->method);
     // const char *pch = NULL;
     if (strstr(this->msg.data(), "GET") != NULL) {
-        // for (size_t i = 0; i < strlen("GET"); i++) {
-        //     this->method.push_back(*pch);
-        //     pch = pch + 1;
-        // }
         cstrToVectorChar(this->method, "GET");
     }
     else if (strstr(this->msg.data(), "POST") != NULL) {
-        // for (size_t i = 0; i < strlen("POST"); i++) {
-        //     this->method.push_back(*pch);
-        //     pch = pch + 1;
-        // }
         cstrToVectorChar(this->method, "POST");
     }
     else if (strstr(this->msg.data(), "CONNECT") != NULL) {
-        // for (size_t i = 0; i < strlen("CONNECT"); i++) {
-        //     this->method.push_back(*pch);
-        //     pch = pch + 1;
-        // }
         cstrToVectorChar(this->method, "CONNECT");
     }
 
