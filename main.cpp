@@ -3,6 +3,7 @@
 #include "ServerSocket.h"
 #include "Request.h"
 #include "Response.h"
+#include "ConnectTunnel.h"
 // #include "ProxyTest.h"
 // #include "ClientTest.h"
 // #include "ServerTest.h"
@@ -12,10 +13,11 @@
 
 std::mutex mtx;
 
-void testProxyHelper(ServerSocket & serverSocket, connect_pair_t & connectPair) {
+void testProxyHelper(ServerSocket & serverSocket, connect_pair_t connectPair) {
     // mtx.lock();
     std::vector<char> recvFromUser;
     std::vector<char> recvFromServer;
+    std::vector<char> tunnelMsg;
 
     if (!serverSocket.socketRecv(recvFromUser, connectPair)) {
         closeSockfd(connectPair.first);
@@ -52,7 +54,19 @@ void testProxyHelper(ServerSocket & serverSocket, connect_pair_t & connectPair) 
         closeSockfd(connectPair.first);
         return;
     }
-    if (!clientSocket.socketRecv(recvFromServer)) {
+
+    if (strcmp(method.data(), "CONNECT") == 0) {
+        if (!handleConnect(tunnelMsg, serverSocket, clientSocket, method, connectPair)) {
+            closeSockfd(connectPair.first);
+            return;
+        }
+        if (tunnelMsg.size() > 0) {
+            std::cout << "tunnelMsg:\n[" << tunnelMsg.data() << "]\n";
+        }
+    }
+
+    Response response;
+    if (!clientSocket.socketRecv(recvFromServer, response)) {
         closeSockfd(connectPair.first);
         return;
     }
@@ -62,14 +76,12 @@ void testProxyHelper(ServerSocket & serverSocket, connect_pair_t & connectPair) 
         return;
     }
 
-    Response response(recvFromServer);
-    // int contentLength = response.getContentLength();
-    std::vector<char> responseHeader = response.getHeader();
-    // std::cout << "\ncontentLength: [" << contentLength << "]\n";
-    if (responseHeader.size() > 0) {
-        std::cout << "\nHeader that the proxy client received:\n[" << \
-        responseHeader.data() << "]\n";
-    }
+    int contentLength = response.getContentLength();
+    // std::vector<char> responseHeader = response.getHeader();
+    std::cout << "\ncontentLength: [" << contentLength << "]\n";
+    // if (responseHeader.size() > 0) {
+    //     std::cout << "\nHeader that the proxy client received:\n[" << responseHeader.data() << "]\n";
+    // }
 
     if (!serverSocket.socketSend(recvFromServer, connectPair)) {
         closeSockfd(connectPair.first);
@@ -84,21 +96,23 @@ void testProxyHelper(ServerSocket & serverSocket, connect_pair_t & connectPair) 
 int main(int argc, char *argv[]) {
     
     try {
-        // if (!testServer(argc, argv)) {return EXIT_FAILURE;}
-        // if (!testClient(argc, argv)) {return EXIT_FAILURE;}
-        // if (!testProxy(argc, argv)) {return EXIT_FAILURE;}
         // Receive request from user's browser
         ServerSocket serverSocket;
         
         while (1) {
             connect_pair_t connectPair = serverSocket.socketAccept();
-            std::thread th(testProxyHelper, std::ref(serverSocket)
-            , std::ref(connectPair));
+            std::thread th(testProxyHelper, std::ref(serverSocket), connectPair);
             th.join();
         }
 
         // connect_pair_t connectPair = serverSocket.socketAccept();
         // testProxyHelper(serverSocket, connectPair);
+
+        // Response response;
+        // std::vector<char> msg;
+        // cstrToVectorChar(msg, "nihao\r\nContent-Length: 30\r\n");
+        // response.parse(msg);
+        // std::cout << "content-length: " << response.getContentLength() << "\n";
 
     }
     catch (std::invalid_argument & e) {

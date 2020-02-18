@@ -2,6 +2,7 @@
 #define __CLIENTSOCKET_H__
 
 #include "Socket.h"
+#include "Response.h"
 #include <iostream>
 #include <cstdio>
 #include <cstdlib>
@@ -23,10 +24,11 @@ class ClientSocket : public Socket {
     public:
     std::vector<char> & getHostName() {return this->hostName;}
     std::vector<char> & getPort() {return this->port;}
+    int & getWebServerSockfd() {return this->sockfd;}
     ClientSocket(std::vector<char> hostName, std::vector<char> port);
     virtual ~ClientSocket();
     virtual bool socketSend(std::vector<char> & sendMsg);
-    virtual bool socketRecv(std::vector<char> & recvMsg);
+    virtual bool socketRecv(std::vector<char> & recvMsg, Response & response);
     
     protected:
     std::vector<char> hostName;
@@ -104,7 +106,7 @@ bool ClientSocket::socketSend(std::vector<char> & sendMsg) {
 
 // Begin citation
 // https://www.binarytides.com/receive-full-data-with-recv-socket-function-in-c/
-bool ClientSocket::socketRecv(std::vector<char> & recvMsg) {
+bool ClientSocket::socketRecv(std::vector<char> & recvMsg, Response & response) {
     int numbytes;
     char recvBuf[MAX_DATA_SIZE];
 
@@ -130,6 +132,7 @@ bool ClientSocket::socketRecv(std::vector<char> & recvMsg) {
             // usleep(100000); // original
             usleep(100);
         }
+        response.parse(recvMsg);
     }
     if (recvMsg.size() > 0) {
         recvMsg.push_back('\0');
