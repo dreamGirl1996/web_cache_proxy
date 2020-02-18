@@ -2,6 +2,7 @@
 #include "ClientSocket.h"
 #include "ServerSocket.h"
 #include "Request.h"
+#include "Response.h"
 // #include "ProxyTest.h"
 // #include "ClientTest.h"
 // #include "ServerTest.h"
@@ -34,11 +35,18 @@ void testProxyHelper(ServerSocket & serverSocket, connect_pair_t & connectPair) 
         closeSockfd(connectPair.first);
         return;
     }
+
+    // if (method.size() == 0 || strcmp(method.data(), "GET") != 0) {
+    //     closeSockfd(connectPair.first);
+    //     return;
+    // }
+    
     printALine(32);
     std::cout << "hostName: [" << hostName.data() << "]\n";
     std::cout << "port: [" << port.data() << "]\n";
-    std::cout << "method: [" << method.data() << "]\n\n";
-    std::cout << "Proxy server received:\n[" << recvFromUser.data() << "]\n";
+    std::cout << "method: [" << method.data() << "]\n";
+    std::cout << "\nProxy server received:\n[" << recvFromUser.data() << "]\n";
+
     ClientSocket clientSocket(hostName, port);
     if (!clientSocket.socketSend(recvFromUser)) {
         closeSockfd(connectPair.first);
@@ -53,6 +61,16 @@ void testProxyHelper(ServerSocket & serverSocket, connect_pair_t & connectPair) 
         closeSockfd(connectPair.first);
         return;
     }
+
+    Response response(recvFromServer);
+    // int contentLength = response.getContentLength();
+    std::vector<char> responseHeader = response.getHeader();
+    // std::cout << "\ncontentLength: [" << contentLength << "]\n";
+    if (responseHeader.size() > 0) {
+        std::cout << "\nHeader that the proxy client received:\n[" << \
+        responseHeader.data() << "]\n";
+    }
+
     if (!serverSocket.socketSend(recvFromServer, connectPair)) {
         closeSockfd(connectPair.first);
         return;

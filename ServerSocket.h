@@ -149,14 +149,8 @@ connect_pair_t ServerSocket::socketAccept() {
             continue;
         }
         else {
-            // this->new_fd_queue.push(new_fd);
-            
             connect_pair_t connectPair(new_fd, their_addr);
             // this->connectPairQueue.push(connectPair);
-
-            // std::string addr(inet_ntoa(((struct sockaddr_in *)&(their_addr))->sin_addr));
-            // std::cout << addr << "\n";            
-
             return connectPair;
         }
     }
@@ -194,11 +188,7 @@ bool ServerSocket::socketRecv(std::vector<char> & recvMsg, connect_pair_t & conn
         }
         // If you got no data at all, wait a little longer, twice the timeout
         else if (timeDiff > SERVER_RECV_TIME_OUT * 2) {break;}
-        // if ((numbytes = recv(connectPair.first, recvBuf, MAX_DATA_SIZE - 1, MSG_DONTWAIT)) != -1) {
-        //     recvBuf[numbytes] = '\0';
-        //     recvMsg += recvBuf;
-        //     // gettimeofday(&begin , NULL);
-        // }
+        
         memset(recvBuf, 0, sizeof recvBuf);
         if ((numbytes = recv(connectPair.first, recvBuf, MAX_DATA_SIZE, MSG_DONTWAIT)) != -1) {
             recvMsg.push_back(recvBuf[0]);
@@ -206,7 +196,7 @@ bool ServerSocket::socketRecv(std::vector<char> & recvMsg, connect_pair_t & conn
         else {
             // If nothing was received then we want to wait a little before trying again, 0.1 seconds
             // usleep(100000); // original
-            usleep(1000);
+            usleep(100);
         }
     }
     if (recvMsg.size() > 0) {
@@ -241,15 +231,6 @@ void ServerSocket::closeSocket() {
     // if (this->sockfd != -1) {close(this->sockfd);}
     // if (this->new_fd != -1) {close(this->new_fd);}
     closeSockfd(this->sockfd);
-    // while (this->new_fd_queue.size() > 0) {
-    //     closeSockfd(this->new_fd_queue.front());
-    //     this->new_fd_queue.pop();
-    // }
-
-    // while (this->connectPairQueue.size() > 0) {
-    //     closeSockfd(this->connectPairQueue.front().first);
-    //     this->connectPairQueue.pop();
-    // }
 }
 
 #endif

@@ -38,4 +38,13 @@ void cstrToVectorChar(std::vector<char> & vecChar, const char * cstr) {
     }
 }
 
+void appendCstrToVectorChar(std::vector<char> & vecChar, const char * cstr) {
+    for (size_t i = 0; i < strlen(cstr); i++) {
+          vecChar.push_back(cstr[i]);
+    }
+    if (vecChar.size() > 0) {
+        vecChar.push_back('\0');
+    }
+}
+
 #endif

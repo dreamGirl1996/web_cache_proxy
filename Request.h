@@ -2,7 +2,7 @@
 #define __REQUEST_H__
 
 #include "utils.h"
-#include <iostream>
+// #include <iostream>
 #include <vector>
 #include <cstring>
 
@@ -13,19 +13,24 @@ class Request {
     std::vector<char> & getHostName() {return this->hostName;}
     std::vector<char> & getPort() {return this->port;}
     std::vector<char> & getMethod() {return this->method;}
+    // int & getContentLength() {return this->contentLength;}
 
     private:
     std::vector<char> & msg;
     std::vector<char> hostName;
     std::vector<char> port;
     std::vector<char> method; 
+    // int contentLength;
     bool parseHostName();
     bool parseMethod();
+    // bool parseContentLength();
 };
 
 Request::Request(std::vector<char> & msg) : msg(msg), hostName(), method() {
+// Request::Request(std::vector<char> & msg) : msg(msg), hostName(), method(), contentLength(-1) {
     this->parseHostName();
     this->parseMethod();
+    // this->parseContentLength();
 }
 
 bool Request::parseHostName() {
@@ -42,14 +47,13 @@ bool Request::parseHostName() {
     }
     if (this->hostName.size() > 0) {
         cstrToVectorChar(this->port, "80");
-        // this->hostName.pop_back();  // remove '\r'
     }
     for (size_t i = 0; i < this->hostName.size(); i++) {
         if (this->hostName[i] == ':') {
             if (i < this->hostName.size() - 1 && this->hostName[i+1] == '4') {
                 cstrToVectorChar(this->port, "443");
             }
-            while(this->hostName.back() != ':') {
+            while (this->hostName.back() != ':') {
                 this->hostName.pop_back();
             }
             hostName.pop_back();
@@ -64,7 +68,6 @@ bool Request::parseHostName() {
 
 bool Request::parseMethod() {
     cleanVectorChar(this->method);
-    // const char *pch = NULL;
     if (strstr(this->msg.data(), "GET") != NULL) {
         cstrToVectorChar(this->method, "GET");
     }

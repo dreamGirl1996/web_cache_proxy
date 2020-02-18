@@ -120,11 +120,7 @@ bool ClientSocket::socketRecv(std::vector<char> & recvMsg) {
         }
         // If you got no data at all, wait a little longer, twice the timeout
         else if (timeDiff > CLIENT_RECV_TIME_OUT * 2) {break;}
-        // if ((numbytes = recv(this->sockfd, recvBuf, MAX_DATA_SIZE - 1, MSG_DONTWAIT)) != -1) {
-        //     recvBuf[numbytes] = '\0';
-        //     recvMsg += recvBuf;
-        //     // gettimeofday(&begin , NULL);
-        // }
+        
         memset(recvBuf, 0, sizeof recvBuf);
         if ((numbytes = recv(this->sockfd, recvBuf, MAX_DATA_SIZE, MSG_DONTWAIT)) != -1) {
             recvMsg.push_back(recvBuf[0]);
@@ -132,7 +128,7 @@ bool ClientSocket::socketRecv(std::vector<char> & recvMsg) {
         else {
             // If nothing was received then we want to wait a little before trying again, 0.1 seconds
             // usleep(100000); // original
-            usleep(1000);
+            usleep(100);
         }
     }
     if (recvMsg.size() > 0) {
