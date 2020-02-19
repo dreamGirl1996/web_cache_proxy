@@ -124,15 +124,20 @@ bool ClientSocket::socketRecv(std::vector<char> & recvMsg, Response & response) 
         else if (timeDiff > CLIENT_RECV_TIME_OUT * 2) {break;}
         
         memset(recvBuf, 0, sizeof recvBuf);
+        // MSG_DONTWAIT or 0
         if ((numbytes = recv(this->sockfd, recvBuf, MAX_DATA_SIZE, MSG_DONTWAIT)) != -1) {
             recvMsg.push_back(recvBuf[0]);
         }
         else {
             // If nothing was received then we want to wait a little before trying again, 0.1 seconds
             // usleep(100000); // original
-            usleep(100);
+            // usleep(100);
         }
         response.parse(recvMsg);
+        if (response.getContentLength() >= 0 && response.getHeader().size() > 0
+        && recvMsg.size() + 1 - response.getHeader().size() >= response.getContentLength()) {
+            break;
+        }
     }
     if (recvMsg.size() > 0) {
         recvMsg.push_back('\0');

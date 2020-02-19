@@ -1,9 +1,8 @@
-#ifndef __TUNNEL_H__
-#define __TUNNEL_H__
+#ifndef __CONNECTTUNNEL_H__
+#define __CONNECTTUNNEL_H__
 
 #include "ServerSocket.h"
 #include "ClientSocket.h"
-
 
 bool talkInTunnel(std::vector<char> & tunnelMsg, 
 ServerSocket & serverSocket, ClientSocket & clientSocket,
@@ -24,11 +23,8 @@ connect_pair_t & connectPair, bool fromUser) {
     return true;
 }
 
-
 bool handleConnect(std::vector<char> & tunnelMsg, 
-ServerSocket & serverSocket, ClientSocket & clientSocket, 
-std::vector<char> & method, connect_pair_t & connectPair) {
-    // if(strcmp(method.data(), "CONNECT") != 0){ return; }
+ServerSocket & serverSocket, ClientSocket & clientSocket, connect_pair_t & connectPair) {
     std::vector<char> msg_connect;
     cstrToVectorChar(msg_connect, "HTTP/1.1 200 OK\r\n\r\n");
 
@@ -38,7 +34,6 @@ std::vector<char> & method, connect_pair_t & connectPair) {
 
     int client_fd = connectPair.first;
     int server_fd = clientSocket.getWebServerSockfd();
-    // std::cout << client_fd << " " << server_fd << "\n";
 
     fd_set socket_set;
     

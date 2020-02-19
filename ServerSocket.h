@@ -21,8 +21,8 @@
 // #include <queue>
 
 #define PORT "12345"  // the port users will be connecting to
-#define BACKLOG 1   // how many pending connections queue will hold
-#define SERVER_RECV_TIME_OUT 1  // max waiting seconds for receiving
+#define BACKLOG 10   // how many pending connections queue will hold
+#define SERVER_RECV_TIME_OUT 0.5  // max waiting seconds for receiving
 
 void sigchld_handler(int s)
 {
@@ -196,7 +196,7 @@ bool ServerSocket::socketRecv(std::vector<char> & recvMsg, connect_pair_t & conn
         else {
             // If nothing was received then we want to wait a little before trying again, 0.1 seconds
             // usleep(100000); // original
-            usleep(100);
+            // usleep(100);
         }
     }
     if (recvMsg.size() > 0) {

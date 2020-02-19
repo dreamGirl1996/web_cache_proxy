@@ -10,22 +10,25 @@ class Response {
     void clearAll();
     bool parse(std::vector<char> & msg);
     // std::vector<char> & getMsg() {return this->msg;}
-    // std::vector<char> & getHeader() {return this->header;}
-    int & getContentLength() {return this->contentLength;}
+    std::vector<char> & getHeader() {return this->header;}
+    size_t & getContentLength() {return this->contentLength;}
     
     private:
     // std::vector<char> & msg;
-    // std::vector<char> header;
-    int contentLength;
-    // bool parseHeader();
+    std::vector<char> header;
+    size_t contentLength;
+    const char * parseHeader(std::vector<char> & msg);
     bool parseContentLength(std::vector<char> & msg);
 };
 
-Response::Response() : contentLength(-1) {}
+Response::Response() : header(), contentLength(-1) {}
 
 bool Response::parse(std::vector<char> & msg) {
     msg.push_back('\0');
     try {
+        if (this->header.size() == 0) {
+            this->parseHeader(msg);
+        }
         if (this->contentLength < 0) {
             this->parseContentLength(msg);
         }
@@ -39,28 +42,29 @@ bool Response::parse(std::vector<char> & msg) {
 }
 
 void Response::clearAll() {
+    cleanVectorChar(this->header);
     this->contentLength = -1;
 }
 
-// bool Response::parseHeader() {
-//     cleanVectorChar(this->header);
-//     const char * pend = strstr(this->msg.data(), "\r\n\r\n");
-//     if (pend != NULL) {
-//         const char * pcur = this->msg.data();
-//         while (pcur < pend) {
-//             this->header.push_back(*pcur);
-//             pcur = pcur + 1;
-//         }
-//     }
-//     if (this->header.size() > 0) {
-//         appendCstrToVectorChar(this->header, "\r\n\r\n");
-//     }
+const char * Response::parseHeader(std::vector<char> & msg) {
+    const char * pend = strstr(msg.data(), "\r\n\r\n");
+    if (pend != NULL) {
+        const char * pcur = msg.data();
+        while (pcur < pend) {
+            this->header.push_back(*pcur);
+            pcur = pcur + 1;
+        }
+    }
+    if (this->header.size() > 0) {
+        appendCstrToVectorChar(this->header, "\r\n\r\n");
+        pend = pend - 1 + strlen("\r\n\r\n");
+        return pend;
+    }
 
-//     return true;
-// }
+    return NULL;
+}
 
 bool Response::parseContentLength(std::vector<char> & msg) {
-    // this->contentLength = -1;
     if (msg.size() == 0) {
         return false;
     }
@@ -88,7 +92,7 @@ bool Response::parseContentLength(std::vector<char> & msg) {
             << __func__;
             throw std::invalid_argument(ess.str());
         }
-        this->contentLength = (int) converted;
+        this->contentLength = (size_t) converted;
         return true;
     }
 

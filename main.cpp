@@ -4,30 +4,26 @@
 #include "Request.h"
 #include "Response.h"
 #include "ConnectTunnel.h"
-// #include "ProxyTest.h"
-// #include "ClientTest.h"
-// #include "ServerTest.h"
+#include "GetHandler.h"
 #include <thread>
 #include <mutex>
 #include <functional>
 
 std::mutex mtx;
 
-void testProxyHelper(ServerSocket & serverSocket, connect_pair_t connectPair) {
+void runProxy(ServerSocket & serverSocket, connect_pair_t connectPair) {
     // mtx.lock();
-    std::vector<char> recvFromUser;
-    std::vector<char> recvFromServer;
-    std::vector<char> tunnelMsg;
+    std::vector<char> requestMsg;
 
-    if (!serverSocket.socketRecv(recvFromUser, connectPair)) {
+    if (!serverSocket.socketRecv(requestMsg, connectPair)) {
         closeSockfd(connectPair.first);
         return;
     }
-    if (recvFromUser.size() == 0) {
+    if (requestMsg.size() == 0) {
         closeSockfd(connectPair.first);
         return;
     }
-    Request request(recvFromUser);
+    Request request(requestMsg);
     
     std::vector<char> hostName = request.getHostName();
     std::vector<char> method = request.getMethod();
@@ -37,26 +33,18 @@ void testProxyHelper(ServerSocket & serverSocket, connect_pair_t connectPair) {
         closeSockfd(connectPair.first);
         return;
     }
-
-    // if (method.size() == 0 || strcmp(method.data(), "GET") != 0) {
-    //     closeSockfd(connectPair.first);
-    //     return;
-    // }
     
     printALine(32);
     std::cout << "hostName: [" << hostName.data() << "]\n";
     std::cout << "port: [" << port.data() << "]\n";
     std::cout << "method: [" << method.data() << "]\n";
-    std::cout << "\nProxy server received:\n[" << recvFromUser.data() << "]\n";
+    std::cout << "\nProxy server received:\n[" << requestMsg.data() << "]\n";
 
     ClientSocket clientSocket(hostName, port);
-    if (!clientSocket.socketSend(recvFromUser)) {
-        closeSockfd(connectPair.first);
-        return;
-    }
 
     if (strcmp(method.data(), "CONNECT") == 0) {
-        if (!handleConnect(tunnelMsg, serverSocket, clientSocket, method, connectPair)) {
+        std::vector<char> tunnelMsg;
+        if (!handleConnect(tunnelMsg, serverSocket, clientSocket, connectPair)) {
             closeSockfd(connectPair.first);
             return;
         }
@@ -64,28 +52,15 @@ void testProxyHelper(ServerSocket & serverSocket, connect_pair_t connectPair) {
             std::cout << "tunnelMsg:\n[" << tunnelMsg.data() << "]\n";
         }
     }
-
-    Response response;
-    if (!clientSocket.socketRecv(recvFromServer, response)) {
-        closeSockfd(connectPair.first);
-        return;
+    else if (strcmp(method.data(), "GET") == 0) {
+        std::vector<char> responseMsg;
+        if (!handleGet(requestMsg, responseMsg, serverSocket, clientSocket, connectPair)) {
+            closeSockfd(connectPair.first);
+            return;
+        }
     }
-
-    if (recvFromServer.size() == 0) {
-        closeSockfd(connectPair.first);
-        return;
-    }
-
-    int contentLength = response.getContentLength();
-    // std::vector<char> responseHeader = response.getHeader();
-    std::cout << "\ncontentLength: [" << contentLength << "]\n";
-    // if (responseHeader.size() > 0) {
-    //     std::cout << "\nHeader that the proxy client received:\n[" << responseHeader.data() << "]\n";
-    // }
-
-    if (!serverSocket.socketSend(recvFromServer, connectPair)) {
-        closeSockfd(connectPair.first);
-        return;
+    else if (strcmp(method.data(), "POST") == 0) {
+        // Do something
     }
 
     closeSockfd(connectPair.first);
@@ -101,12 +76,12 @@ int main(int argc, char *argv[]) {
         
         while (1) {
             connect_pair_t connectPair = serverSocket.socketAccept();
-            std::thread th(testProxyHelper, std::ref(serverSocket), connectPair);
+            std::thread th(runProxy, std::ref(serverSocket), connectPair);
             th.join();
         }
 
         // connect_pair_t connectPair = serverSocket.socketAccept();
-        // testProxyHelper(serverSocket, connectPair);
+        // runProxy(serverSocket, connectPair);
 
         // Response response;
         // std::vector<char> msg;
