@@ -4,8 +4,9 @@
 #include "ServerSocket.h"
 #include "ClientSocket.h"
 
-bool handleGet(std::vector<char> & requestMsg, std::vector<char> & responseMsg, 
+bool handleGet(std::vector<char> & requestMsg, 
 ServerSocket & serverSocket, ClientSocket & clientSocket, connect_pair_t & connectPair) {
+    std::vector<char> responseMsg;
     if (!clientSocket.socketSend(requestMsg)) {
         return false;
     }
@@ -17,7 +18,7 @@ ServerSocket & serverSocket, ClientSocket & clientSocket, connect_pair_t & conne
 
     if (responseMsg.size() == 0) {
         return false;
-    }
+    } // commented when responseMst resized in client socketRecv
 
     int contentLength = response.getContentLength();
     std::vector<char> responseHeader = response.getHeader();

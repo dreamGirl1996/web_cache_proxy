@@ -12,7 +12,6 @@
 std::mutex mtx;
 
 void runProxy(ServerSocket & serverSocket, connect_pair_t connectPair) {
-    // mtx.lock();
     std::vector<char> requestMsg;
 
     if (!serverSocket.socketRecv(requestMsg, connectPair)) {
@@ -42,19 +41,15 @@ void runProxy(ServerSocket & serverSocket, connect_pair_t connectPair) {
 
     ClientSocket clientSocket(hostName, port);
 
+    
     if (strcmp(method.data(), "CONNECT") == 0) {
-        std::vector<char> tunnelMsg;
-        if (!handleConnect(tunnelMsg, serverSocket, clientSocket, connectPair)) {
+        if (!handleConnect(serverSocket, clientSocket, connectPair)) {
             closeSockfd(connectPair.first);
             return;
         }
-        if (tunnelMsg.size() > 0) {
-            std::cout << "tunnelMsg:\n[" << tunnelMsg.data() << "]\n";
-        }
     }
     else if (strcmp(method.data(), "GET") == 0) {
-        std::vector<char> responseMsg;
-        if (!handleGet(requestMsg, responseMsg, serverSocket, clientSocket, connectPair)) {
+        if (!handleGet(requestMsg, serverSocket, clientSocket, connectPair)) {
             closeSockfd(connectPair.first);
             return;
         }
@@ -64,7 +59,7 @@ void runProxy(ServerSocket & serverSocket, connect_pair_t connectPair) {
     }
 
     closeSockfd(connectPair.first);
-    // mtx.unlock();
+
 }
 
 

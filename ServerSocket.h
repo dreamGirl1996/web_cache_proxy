@@ -176,7 +176,7 @@ bool ServerSocket::socketRecv(std::vector<char> & recvMsg, connect_pair_t & conn
     int numbytes;
     char recvBuf[MAX_DATA_SIZE];
 
-    struct  timeval begin, now;
+    struct timeval begin, now;
     double timeDiff;
     gettimeofday(&begin, NULL);
     while (1) { 
@@ -194,9 +194,7 @@ bool ServerSocket::socketRecv(std::vector<char> & recvMsg, connect_pair_t & conn
             recvMsg.push_back(recvBuf[0]);
         }
         else {
-            // If nothing was received then we want to wait a little before trying again, 0.1 seconds
-            // usleep(100000); // original
-            // usleep(100);
+            // Do something?
         }
     }
     if (recvMsg.size() > 0) {

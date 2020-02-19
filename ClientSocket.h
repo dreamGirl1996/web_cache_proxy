@@ -110,7 +110,7 @@ bool ClientSocket::socketRecv(std::vector<char> & recvMsg, Response & response) 
     int numbytes;
     char recvBuf[MAX_DATA_SIZE];
 
-    struct  timeval begin, now;
+    struct timeval begin, now;
     double timeDiff;
     gettimeofday(&begin, NULL);
     while (1) {
@@ -129,13 +129,11 @@ bool ClientSocket::socketRecv(std::vector<char> & recvMsg, Response & response) 
             recvMsg.push_back(recvBuf[0]);
         }
         else {
-            // If nothing was received then we want to wait a little before trying again, 0.1 seconds
-            // usleep(100000); // original
-            // usleep(100);
+            // Do something?
         }
         response.parse(recvMsg);
         if (response.getContentLength() >= 0 && response.getHeader().size() > 0
-        && recvMsg.size() + 1 - response.getHeader().size() >= response.getContentLength()) {
+        && (int) recvMsg.size() + 1 - (int) response.getHeader().size() >= response.getContentLength()) {
             break;
         }
     }

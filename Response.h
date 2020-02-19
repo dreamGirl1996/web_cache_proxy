@@ -11,12 +11,12 @@ class Response {
     bool parse(std::vector<char> & msg);
     // std::vector<char> & getMsg() {return this->msg;}
     std::vector<char> & getHeader() {return this->header;}
-    size_t & getContentLength() {return this->contentLength;}
+    int & getContentLength() {return this->contentLength;}
     
     private:
     // std::vector<char> & msg;
     std::vector<char> header;
-    size_t contentLength;
+    int contentLength;
     const char * parseHeader(std::vector<char> & msg);
     bool parseContentLength(std::vector<char> & msg);
 };
