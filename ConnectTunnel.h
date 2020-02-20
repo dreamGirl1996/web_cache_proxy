@@ -13,7 +13,7 @@ fd_set & socket_set, int & client_fd, int & server_fd) {
         try {
             transfer.resize(65535, 0);
             size_t recvbyte_num = recv(client_fd, &transfer.data()[0], 65535, 0);
-            if (recvbyte_num == 0){
+            if (recvbyte_num <= 0) {
                 return 0; // break
             }
             send(server_fd,transfer.data(), recvbyte_num, 0);
@@ -28,7 +28,7 @@ fd_set & socket_set, int & client_fd, int & server_fd) {
         try {
             transfer.resize(65535,0);
             size_t recvbyte_num = recv(server_fd, &transfer.data()[0], 65535, 0);
-            if (recvbyte_num == 0){
+            if (recvbyte_num <= 0) {
                 return 0;  // break
             }
             send(client_fd, transfer.data(), recvbyte_num,0);
