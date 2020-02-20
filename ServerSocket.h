@@ -2,6 +2,7 @@
 #define __SERVERSOCKET_H__
 
 #include "Socket.h"
+#include "Request.h"
 #include <stdio.h>
 #include <stdlib.h>
 // #include <unistd.h>
@@ -43,7 +44,7 @@ class ServerSocket : public Socket {
     // std::queue<int> & get_new_fd_queue();
     // connect_pair_queue_t & getConnectPairQueue();
     virtual connect_pair_t socketAccept();
-    virtual bool socketRecv(std::vector<char> & recvMsg, connect_pair_t & connectPair);
+    virtual bool socketRecv(std::vector<char> & recvMsg, connect_pair_t & connectPair, Request & request);
     virtual bool socketSend(std::vector<char> & sendMsg, connect_pair_t & connectPair);
 
     protected:
@@ -52,15 +53,8 @@ class ServerSocket : public Socket {
 
     private:
     int sockfd;  // listen on sock_fd, new connection on new_fd
-    // struct sockaddr_storage their_addr;  // connector's address information
-    // // int new_fd;
-    // std::queue<int> new_fd_queue;
-    // connect_pair_queue_t connectPairQueue;
 };
 
-// ServerSocket::ServerSocket() : Socket(), sockfd(-1), connectPairQueue() {
-// ServerSocket::ServerSocket() : Socket(), sockfd(-1), their_addr(), new_fd_queue() {
-// ServerSocket::ServerSocket() : Socket(), sockfd(-1), new_fd(-1) {
 ServerSocket::ServerSocket() : Socket(), sockfd(-1) {
     if(!this->setup()) {
         std::stringstream ess;
@@ -163,7 +157,7 @@ connect_pair_t ServerSocket::socketAccept() {
 
 // Begin citation
 // https://www.binarytides.com/receive-full-data-with-recv-socket-function-in-c/
-bool ServerSocket::socketRecv(std::vector<char> & recvMsg, connect_pair_t & connectPair) {
+bool ServerSocket::socketRecv(std::vector<char> & recvMsg, connect_pair_t & connectPair, Request & request) {
     if (connectPair.first == -1) {
         std::cerr << "Invalid new_fd in " << __func__ << "\n";
         return false;
@@ -196,6 +190,7 @@ bool ServerSocket::socketRecv(std::vector<char> & recvMsg, connect_pair_t & conn
         else {
             // Do something?
         }
+        request.parse(recvMsg);
     }
     if (recvMsg.size() > 0) {
         recvMsg.push_back('\0');

@@ -14,7 +14,8 @@ std::mutex mtx;
 void runProxy(ServerSocket & serverSocket, connect_pair_t connectPair) {
     std::vector<char> requestMsg;
 
-    if (!serverSocket.socketRecv(requestMsg, connectPair)) {
+    Request request;
+    if (!serverSocket.socketRecv(requestMsg, connectPair, request)) {
         closeSockfd(connectPair.first);
         return;
     }
@@ -22,7 +23,6 @@ void runProxy(ServerSocket & serverSocket, connect_pair_t connectPair) {
         closeSockfd(connectPair.first);
         return;
     }
-    Request request(requestMsg);
     
     std::vector<char> hostName = request.getHostName();
     std::vector<char> method = request.getMethod();
@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
         // std::cout << "content-length: " << response.getContentLength() << "\n";
 
     }
-    catch (std::invalid_argument & e) {
+    catch (std::exception & e) {
         std::cerr << e.what() << "\n";
         return EXIT_FAILURE;
     }
