@@ -184,7 +184,7 @@ bool ServerSocket::socketRecv(std::vector<char> & recvMsg, connect_pair_t & conn
         else if (timeDiff > SERVER_RECV_TIME_OUT * 2) {break;}
         
         memset(recvBuf, 0, sizeof recvBuf);
-        if ((numbytes = recv(connectPair.first, recvBuf, MAX_DATA_SIZE, MSG_DONTWAIT)) != -1) {
+        if ((numbytes = recv(connectPair.first, recvBuf, MAX_DATA_SIZE, MSG_DONTWAIT)) > 0) {
             recvMsg.push_back(recvBuf[0]);
         }
         else {

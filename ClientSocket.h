@@ -125,7 +125,7 @@ bool ClientSocket::socketRecv(std::vector<char> & recvMsg, Response & response) 
         
         memset(recvBuf, 0, sizeof recvBuf);
         // MSG_DONTWAIT or 0
-        if ((numbytes = recv(this->sockfd, recvBuf, MAX_DATA_SIZE, MSG_DONTWAIT)) != -1) {
+        if ((numbytes = recv(this->sockfd, recvBuf, MAX_DATA_SIZE, MSG_DONTWAIT)) > 0) {
             recvMsg.push_back(recvBuf[0]);
         }
         else {
@@ -134,6 +134,7 @@ bool ClientSocket::socketRecv(std::vector<char> & recvMsg, Response & response) 
         response.parse(recvMsg);
         if (response.getContentLength() >= 0 && response.getHeader().size() > 0
         && (int) recvMsg.size() + 1 - (int) response.getHeader().size() >= response.getContentLength()) {
+            // std::cout << "RECV complete!\n";
             break;
         }
     }
