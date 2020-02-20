@@ -26,9 +26,11 @@ ServerSocket & serverSocket, ClientSocket & clientSocket, connect_pair_t & conne
     std::cout << "\ncontentLength: [" << contentLength << "]\n";
     if (datetimeVectorChar.size() > 0) {
         std::cout << "datetimeVectorChar: [" << datetimeVectorChar.data() << "]\n";
+        std::tm datetime = getDatetime(datetimeVectorChar);
+        std::cout << "datetime: [" << std::put_time(&datetime, "%c") << "]\n";
     }
     if (responseHeader.size() > 0) {
-        std::cout << "\nHeader that the proxy client received:\n[" << responseHeader.data() << "]\n";
+        std::cout << "\nResponse header:\n[" << responseHeader.data() << "]\n";
     }
 
     if (!serverSocket.socketSend(responseMsg, connectPair)) {

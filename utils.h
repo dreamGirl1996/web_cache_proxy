@@ -6,6 +6,9 @@
 #include <cctype>
 #include <vector>
 #include <cstring>
+#include <locale>
+#include <iomanip>
+// #include <exception>
 
 void printALine(size_t size) {
     std::string line;
@@ -45,6 +48,19 @@ void appendCstrToVectorChar(std::vector<char> & vecChar, const char * cstr) {
     if (vecChar.size() > 0) {
         vecChar.push_back('\0');
     }
+}
+
+std::tm getDatetime(std::vector<char> & datetimeVectorChar) {
+    std::tm t = {};
+    std::istringstream ss(datetimeVectorChar.data());
+    // ss.imbue(std::locale("de_DE.utf-8"));
+    ss >> std::get_time(&t, "%a, %d %b %Y %H:%M:%S");
+    if (ss.fail()) {
+        std::stringstream ess;
+        ess << "Parse failed on datetime in " << __func__;
+        throw std::invalid_argument(ess.str());
+    } 
+    return t;
 }
 
 #endif

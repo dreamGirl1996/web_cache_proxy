@@ -70,6 +70,7 @@ bool handleConnect(ServerSocket & serverSocket, ClientSocket & clientSocket, con
             default:
                 //receive from client
                 std::vector<char> transfer;
+                Request request;
                 Response response;
                 int r = tunnelTransfer(transfer, response, socket_set, client_fd, server_fd);
                 if (r == 0) {
@@ -85,5 +86,22 @@ bool handleConnect(ServerSocket & serverSocket, ClientSocket & clientSocket, con
     
     return true;  // actually it is a timeout
 }
+
+// if (FD_ISSET(client_fd, &socket_set)) {
+//     if (!serverSocket.socketRecv(transfer, connectPair, request)) {
+//         return false;
+//     }
+//     if (!clientSocket.socketSend(transfer)) {
+//         return false;
+//     }
+// }
+// else if(FD_ISSET(server_fd, &socket_set)){
+//     if (!clientSocket.socketRecv(transfer, response)) {
+//         return false;
+//     }
+//     if (!serverSocket.socketSend(transfer, connectPair)) {
+//         return false;
+//     }
+// }
 
 #endif

@@ -2,34 +2,25 @@
 #define __RESPONSE_H__
 
 #include "utils.h"
-#include <vector>
+#include "HttpParser.h"
+// #include <vector>
 #include <algorithm>
 #include <cassert>
 
-class Response {
+class Response : public HttpParser {
     public:
     Response();
-    void clearAll();
-    bool parse(std::vector<char> & msg);
-    // std::vector<char> & getMsg() {return this->msg;}
-    std::vector<char> & getHeader() {return this->header;}
-    int & getContentLength() {return this->contentLength;}
-    std::vector<char> & getDatetimeVectorChar() {return this->datetime;}
-    time_t getDatetime(std::vector<char> & datetimeVectorChar);
+    virtual void clearResponse();
+    virtual bool parse(std::vector<char> & msg);
+    virtual std::vector<char> & getDatetimeVectorChar() {return this->datetime;}
     
-    private:
-    // std::vector<char> & msg;
-    std::vector<char> firstLine;
-    std::vector<char> header;
+    protected:
     std::vector<char> datetime;
     std::vector<char> timeZone;
-    int contentLength;
-    const char * parseHeader(std::vector<char> & msg);
-    bool parseContentLength(std::vector<char> & msg);
-    bool parseDateTime(std::vector<char> & msg);
+    virtual bool parseDateTime(std::vector<char> & msg);
 };
 
-Response::Response() : header(), contentLength(-1) {}
+Response::Response() : HttpParser() {}
 
 bool Response::parse(std::vector<char> & msg) {
     msg.push_back('\0');
@@ -46,6 +37,17 @@ bool Response::parse(std::vector<char> & msg) {
         if (this->datetime.size() > 0) {
             assert(this->timeZone.size() > 0);
         }
+        //
+        if (this->transferEncoding.size() == 0) {
+            this->parseTransferEncoding(msg);
+        }
+        if (this->content.size() == 0) {
+            this->parseContent(msg);
+        }
+        if (this->checkIsCompleted(msg)) {
+            msg.pop_back();
+            return true;
+        } 
     }
     catch (std::invalid_argument & e) {
         msg.pop_back();
@@ -55,62 +57,8 @@ bool Response::parse(std::vector<char> & msg) {
     return true;
 }
 
-void Response::clearAll() {
-    cleanVectorChar(this->header);
-    this->contentLength = -1;
-}
-
-const char * Response::parseHeader(std::vector<char> & msg) {
-    const char * pend = strstr(msg.data(), "\r\n\r\n");
-    if (pend != NULL) {
-        const char * pcur = msg.data();
-        while (pcur < pend) {
-            this->header.push_back(*pcur);
-            pcur = pcur + 1;
-        }
-    }
-    if (this->header.size() > 0) {
-        appendCstrToVectorChar(this->header, "\r\n\r\n");
-        pend = pend - 1 + strlen("\r\n\r\n");
-        return pend;
-    }
-
-    return NULL;
-}
-
-bool Response::parseContentLength(std::vector<char> & msg) {
-    if (msg.size() == 0) {
-        return false;
-    }
-    const char * pch = strstr(msg.data(), "Content-Length:");
-    if (pch == NULL) {
-        return false;
-    }
-    pch = pch + strlen("Content-Length:");
-    skipSpace(&pch);
-    std::vector<char> contLenStr;
-    while (*pch != '\r' && *pch != '\0') {
-        contLenStr.push_back(*pch);
-        pch = pch + 1;
-    }
-    if (*pch == '\0') {
-        return false;
-    }
-    if (contLenStr.size() > 0) {
-        contLenStr.push_back('\0');
-        char * endp;
-        long converted = strtol(contLenStr.data(), &endp, 10);
-        if (endp == contLenStr.data()) {
-            std::stringstream ess;
-            ess << "error occured when parsing Content-Length in " \
-            << __func__;
-            throw std::invalid_argument(ess.str());
-        }
-        this->contentLength = (size_t) converted;
-        return true;
-    }
-    std::cerr << "cannot parse content-length!\n";
-    return false;
+void Response::clearResponse() {
+    this->clear();
 }
 
 bool Response::parseDateTime(std::vector<char> & msg) {

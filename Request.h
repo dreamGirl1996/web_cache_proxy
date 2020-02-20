@@ -2,57 +2,72 @@
 #define __REQUEST_H__
 
 #include "utils.h"
+#include "HttpParser.h"
 // #include <iostream>
-#include <vector>
-#include <cstring>
+// #include <vector>
+// #include <cstring>
 #include <cassert>
 
-class Request {
+class Request : public HttpParser {
     public:
     Request();
-    void clearAll();
-    bool parse(std::vector<char> & msg);
-    // std::vector<char> & getMsg() {return this->msg;}
-    std::vector<char> & getHostName() {return this->hostName;}
-    std::vector<char> & getPort() {return this->port;}
-    std::vector<char> & getMethod() {return this->method;}
-    // int & getContentLength() {return this->contentLength;}
+    virtual void clearRequest();
+    virtual bool parse(std::vector<char> & msg);
+    virtual std::vector<char> & getHostName() {return this->hostName;}
+    virtual std::vector<char> & getPort() {return this->port;}
+    virtual std::vector<char> & getMethod() {return this->method;}
 
-    private:
-    // std::vector<char> & msg;
+    protected:
     std::vector<char> hostName;
     std::vector<char> port;
     std::vector<char> method; 
-    // int contentLength;
-    bool parseHostName(std::vector<char> & msg);
-    bool parseMethod(std::vector<char> & msg);
-    // bool parseContentLength();
+    virtual bool parseHostName(std::vector<char> & msg);
+    virtual bool parseMethod(std::vector<char> & msg);
 };
 
-Request::Request() : hostName(), port(), method() {
-    // this->parseHostName();
-    // this->parseMethod();
-
-    // this->parseContentLength();
-}
+Request::Request() : HttpParser(), hostName(), port(), method() {}
 
 bool Request::parse(std::vector<char> & msg) {
     msg.push_back('\0');
-    if (this->hostName.size() == 0) {
-        this->parseHostName(msg);
+    try {
+        if (this->header.size() == 0) {
+            this->parseHeader(msg);
+        }
+        if (this->hostName.size() == 0) {
+            this->parseHostName(msg);
+        }
+        if (this->hostName.size() > 0) {
+            assert(this->port.size() > 0);
+        }
+        if (this->method.size() == 0) {
+            this->parseMethod(msg);
+        }
+        if (this->contentLength < 0) {
+            this->parseContentLength(msg);
+        }
+        //
+        if (this->transferEncoding.size() == 0) {
+            this->parseTransferEncoding(msg);
+        }
+        if (this->content.size() == 0) {
+            this->parseContent(msg);
+        }
+        if (this->checkIsCompleted(msg)) {
+            msg.pop_back();
+            return true;
+        } 
     }
-    if (this->hostName.size() > 0) {
-        assert(this->port.size() > 0);
-    }
-    if (this->method.size() == 0) {
-        this->parseMethod(msg);
+    catch (std::invalid_argument & e) {
+        msg.pop_back();
+        throw std::invalid_argument(e.what());
     }
     msg.pop_back();
 
     return true;
 }
 
-void Request::clearAll() {
+void Request::clearRequest() {
+    this->clear();
     cleanVectorChar(this->hostName);
     cleanVectorChar(this->port);
     cleanVectorChar(this->method);

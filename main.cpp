@@ -37,16 +37,16 @@ void runProxy(ServerSocket & serverSocket, connect_pair_t connectPair) {
     std::cout << "hostName: [" << hostName.data() << "]\n";
     std::cout << "port: [" << port.data() << "]\n";
     std::cout << "method: [" << method.data() << "]\n";
-    std::cout << "\nProxy server received:\n[" << requestMsg.data() << "]\n";
+    std::cout << "\nRequest header:\n[" << request.getHeader().data() << "]\n";
 
     ClientSocket clientSocket(hostName, port);
 
     
     if (strcmp(method.data(), "CONNECT") == 0) {
-        // if (!handleConnect(serverSocket, clientSocket, connectPair)) {
-        //     closeSockfd(connectPair.first);
-        //     return;
-        // }
+        if (!handleConnect(serverSocket, clientSocket, connectPair)) {
+            closeSockfd(connectPair.first);
+            return;
+        }
     }
     else if (strcmp(method.data(), "GET") == 0) {
         if (!handleGet(requestMsg, serverSocket, clientSocket, connectPair)) {
@@ -55,11 +55,10 @@ void runProxy(ServerSocket & serverSocket, connect_pair_t connectPair) {
         }
     }
     else if (strcmp(method.data(), "POST") == 0) {
-        // Do something
-        if (!handleGet(requestMsg, serverSocket, clientSocket, connectPair)) {
-            closeSockfd(connectPair.first);
-            return;
-        }
+        // if (!handleGet(requestMsg, serverSocket, clientSocket, connectPair)) {
+        //     closeSockfd(connectPair.first);
+        //     return;
+        // }
     }
 
     closeSockfd(connectPair.first);
