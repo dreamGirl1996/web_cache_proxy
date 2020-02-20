@@ -43,10 +43,10 @@ void runProxy(ServerSocket & serverSocket, connect_pair_t connectPair) {
 
     
     if (strcmp(method.data(), "CONNECT") == 0) {
-        if (!handleConnect(serverSocket, clientSocket, connectPair)) {
-            closeSockfd(connectPair.first);
-            return;
-        }
+        // if (!handleConnect(serverSocket, clientSocket, connectPair)) {
+        //     closeSockfd(connectPair.first);
+        //     return;
+        // }
     }
     else if (strcmp(method.data(), "GET") == 0) {
         if (!handleGet(requestMsg, serverSocket, clientSocket, connectPair)) {
@@ -56,6 +56,10 @@ void runProxy(ServerSocket & serverSocket, connect_pair_t connectPair) {
     }
     else if (strcmp(method.data(), "POST") == 0) {
         // Do something
+        if (!handleGet(requestMsg, serverSocket, clientSocket, connectPair)) {
+            closeSockfd(connectPair.first);
+            return;
+        }
     }
 
     closeSockfd(connectPair.first);

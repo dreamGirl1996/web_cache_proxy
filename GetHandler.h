@@ -22,7 +22,11 @@ ServerSocket & serverSocket, ClientSocket & clientSocket, connect_pair_t & conne
 
     int contentLength = response.getContentLength();
     std::vector<char> responseHeader = response.getHeader();
+    std::vector<char> datetimeVectorChar = response.getDatetimeVectorChar();
     std::cout << "\ncontentLength: [" << contentLength << "]\n";
+    if (datetimeVectorChar.size() > 0) {
+        std::cout << "datetimeVectorChar: [" << datetimeVectorChar.data() << "]\n";
+    }
     if (responseHeader.size() > 0) {
         std::cout << "\nHeader that the proxy client received:\n[" << responseHeader.data() << "]\n";
     }
