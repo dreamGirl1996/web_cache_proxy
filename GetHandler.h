@@ -20,18 +20,16 @@ ServerSocket & serverSocket, ClientSocket & clientSocket, connect_pair_t & conne
         return false;
     } // commented when responseMst resized in client socketRecv
 
-    int contentLength = response.getContentLength();
-    std::vector<char> responseHeader = response.getHeader();
     std::vector<char> datetimeVectorChar = response.getDatetimeVectorChar();
-    std::cout << "\ncontentLength: [" << contentLength << "]\n";
+    std::cout << "\ncontentLength: [" << response.getContentLength() << "]\n";
     if (datetimeVectorChar.size() > 0) {
         std::cout << "datetimeVectorChar: [" << datetimeVectorChar.data() << "]\n";
         std::tm datetime = getDatetime(datetimeVectorChar);
         std::cout << "datetime: [" << std::put_time(&datetime, "%c") << "]\n";
     }
     std::cout << "Response first line: [" << response.getFirstLine().data() << "]\n";
-    if (responseHeader.size() > 0) {
-        std::cout << "\nResponse header:\n[" << responseHeader.data() << "]\n";
+    if (response.getHeader().size() > 0) {
+        std::cout << "Response header:\n[" << response.getHeader().data() << "]\n";
     }
 
     if (!serverSocket.socketSend(responseMsg, connectPair)) {

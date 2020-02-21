@@ -37,7 +37,8 @@ void runProxy(ServerSocket & serverSocket, connect_pair_t connectPair) {
     std::cout << "hostName: [" << hostName.data() << "]\n";
     std::cout << "port: [" << port.data() << "]\n";
     std::cout << "method: [" << method.data() << "]\n";
-    std::cout << "\nRequest header:\n[" << request.getHeader().data() << "]\n";
+    std::cout << "Request first line:\n[" << request.getFirstLine().data() << "]\n";
+    std::cout << "Request header:\n[" << request.getHeader().data() << "]\n";
 
     ClientSocket clientSocket(hostName, port);
 

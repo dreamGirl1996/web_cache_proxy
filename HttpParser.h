@@ -8,7 +8,7 @@ class HttpParser {
     HttpParser();
     virtual bool parse(std::vector<char> & msg) = 0;
     virtual bool & getIsCompleted() {return this->isCompleted;}
-    virtual std::vector<char> getFirstLine();
+    virtual std::vector<char> & getFirstLine() {return this->firstLine;}
     virtual std::vector<char> & getHeader() {return this->header;}
     virtual std::vector<char> & getContent() {return this->content;}
     virtual int & getContentLength() {return this->contentLength;}
@@ -16,12 +16,14 @@ class HttpParser {
 
     protected:
     bool isCompleted;
+    std::vector<char> firstLine;
     std::vector<char> header;
     std::vector<char> content;
     int contentLength;
     std::vector<char> transferEncoding;
     virtual void clear();
     virtual bool checkIsCompleted(std::vector<char> & msg);
+    virtual const char * parseFirstLine(std::vector<char> & msg);
     virtual const char * parseHeader(std::vector<char> & msg);
     virtual const char * parseContent(std::vector<char> & msg);
     virtual bool parseContentLength(std::vector<char> & msg);
@@ -88,30 +90,33 @@ bool HttpParser::parseTransferEncoding(std::vector<char> & msg) {
     return false;
 }
 
-std::vector<char> HttpParser::getFirstLine() {
-    std::vector<char> firstLine;
-    if (this->header.size() == 0) {
-        throw std::invalid_argument("first line has not been parsed yet!");
+const char * HttpParser::parseFirstLine(std::vector<char> & msg) {
+    const char * pend = strstr(msg.data(), "\r\n");
+    if (pend == NULL) {
+        return NULL;
     }
-    for (size_t i = 0; i < this->header.size(); i++) {
-        if (this->header[i] != '\r') { // find the first '\r'
-            firstLine.push_back(this->header[i]);
-        }
-        else {
-            break;
-        }
+    const char * pcur = msg.data();
+    while (pcur < pend) {
+        this->firstLine.push_back(*pcur);
+        pcur = pcur + 1;
     }
-    if (firstLine.size() > 0) {
-        // appendCstrToVectorChar(firstLine, "\r\n");  // if don't use this line, remember push back '\0'
-        firstLine.push_back('\0');
+    if (this->firstLine.size() > 0) {
+        this->firstLine.push_back('\0');
+        pend = pend - 1 + strlen("\r\n");
+        return pend;
     }
-    return firstLine;
+    return NULL;
 }
 
 const char * HttpParser::parseHeader(std::vector<char> & msg) {
+    const char * pcur = strstr(msg.data(), "\r\n");
+    if (pcur == NULL) {
+        return NULL;
+    }
+    pcur = pcur + strlen("\r\n");
     const char * pend = strstr(msg.data(), "\r\n\r\n");
     if (pend != NULL) {
-        const char * pcur = msg.data();
+        // const char * pcur = msg.data();
         while (pcur < pend) {
             this->header.push_back(*pcur);
             pcur = pcur + 1;
@@ -144,7 +149,6 @@ const char * HttpParser::parseContent(std::vector<char> & msg) {
         return NULL;
     }
     pcur = pcur + strlen("\r\n\r\n"); 
-    skipSpace(&pcur);
 
     if (contentLength <= 0) { // chunked data
         //std::cout << "chunked!\n";
@@ -164,7 +168,8 @@ const char * HttpParser::parseContent(std::vector<char> & msg) {
     }
     else { // content-length
         // std::cout << "contentlenth!\n";
-        if ((int) msg.size() - (int) this->header.size() >= this->contentLength) {
+        if ((int) msg.size() - (int) this->header.size() -
+        (int) this->firstLine.size() - (int) strlen("\r\n") >= this->contentLength) {
             while (*pcur != '\0') {
                 this->content.push_back(*pcur);
                 pcur = pcur + 1;

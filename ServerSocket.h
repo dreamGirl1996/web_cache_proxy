@@ -21,10 +21,6 @@
 #include <sstream>
 // #include <queue>
 
-#define PORT "12345"  // the port users will be connecting to
-#define BACKLOG 10   // how many pending connections queue will hold
-#define SERVER_RECV_TIME_OUT 0.5  // max waiting seconds for receiving
-
 void sigchld_handler(int s)
 {
     // waitpid() might overwrite errno, so we save and restore it:
@@ -170,18 +166,13 @@ bool ServerSocket::socketRecv(std::vector<char> & recvMsg, connect_pair_t & conn
     int numbytes;
     char recvBuf[MAX_DATA_SIZE];
 
-    // struct timeval begin, now;
-    // double timeDiff;
-    // gettimeofday(&begin, NULL);
+    struct timeval begin, now;
+    double timeDiff;
+    gettimeofday(&begin, NULL);
     while (1) { 
-        // gettimeofday(&now, NULL);
-        // timeDiff = (now.tv_sec - begin.tv_sec) + 1e-6 * (now.tv_usec - begin.tv_usec);
-        // // If you got some data, then break after timeout
-        // if (recvMsg.size() > 0 && timeDiff > SERVER_RECV_TIME_OUT) {
-        //     break;
-        // }
-        // // If you got no data at all, wait a little longer, twice the timeout
-        // else if (timeDiff > SERVER_RECV_TIME_OUT * 2) {break;}
+        gettimeofday(&now, NULL);
+        timeDiff = (now.tv_sec - begin.tv_sec) + 1e-6 * (now.tv_usec - begin.tv_usec);
+        if (timeDiff > SERVER_RECV_TIME_OUT) {break;}
         
         memset(recvBuf, 0, sizeof recvBuf);
         // MSG_DONTWAIT or 0

@@ -9,7 +9,11 @@
 
 // #define SERVER_PORT_80 "80"
 // #define SERVER_PORT_443 "443"
+#define PORT "12345"  // the port users will be connecting to
+#define BACKLOG 10   // how many pending connections queue will hold
 #define MAX_DATA_SIZE 1
+#define SERVER_RECV_TIME_OUT 0.5  // max waiting seconds for receiving
+#define CLIENT_RECV_TIME_OUT 10
 
 void closeSockfd(int & sockfd) {
     if (sockfd != -1) {close(sockfd);}

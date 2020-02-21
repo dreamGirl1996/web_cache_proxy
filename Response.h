@@ -25,6 +25,9 @@ Response::Response() : HttpParser() {}
 bool Response::parse(std::vector<char> & msg) {
     msg.push_back('\0');
     try {
+        if (this->firstLine.size() == 0) {
+            this->parseFirstLine(msg);
+        }
         if (this->header.size() == 0) {
             this->parseHeader(msg);
         }

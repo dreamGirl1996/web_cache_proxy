@@ -18,8 +18,6 @@
 #include <exception>
 #include <sstream>
 
-#define CLIENT_RECV_TIME_OUT 1
-
 class ClientSocket : public Socket {
     public:
     std::vector<char> & getHostName() {return this->hostName;}
@@ -113,18 +111,13 @@ bool ClientSocket::socketRecv(std::vector<char> & recvMsg, Response & response) 
     int numbytes;
     char recvBuf[MAX_DATA_SIZE];
 
-    // struct timeval begin, now;
-    // double timeDiff;
-    // gettimeofday(&begin, NULL);
+    struct timeval begin, now;
+    double timeDiff;
+    gettimeofday(&begin, NULL);
     while (1) {
-        // gettimeofday(&now, NULL);
-        // timeDiff = (now.tv_sec - begin.tv_sec) + 1e-6 * (now.tv_usec - begin.tv_usec);
-        // // If you got some data, then break after timeout
-        // if (recvMsg.size() > 0 && timeDiff > CLIENT_RECV_TIME_OUT) {
-        //     break;
-        // }
-        // // If you got no data at all, wait a little longer, twice the timeout
-        // else if (timeDiff > CLIENT_RECV_TIME_OUT * 2) {break;}
+        gettimeofday(&now, NULL);
+        timeDiff = (now.tv_sec - begin.tv_sec) + 1e-6 * (now.tv_usec - begin.tv_usec);
+        if (timeDiff > CLIENT_RECV_TIME_OUT ) {break;}
         
         memset(recvBuf, 0, sizeof recvBuf);
         // MSG_DONTWAIT or 0
