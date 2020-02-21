@@ -8,6 +8,7 @@ class HttpParser {
     HttpParser();
     virtual bool parse(std::vector<char> & msg) = 0;
     virtual bool & getIsCompleted() {return this->isCompleted;}
+    virtual std::vector<char> getFirstLine();
     virtual std::vector<char> & getHeader() {return this->header;}
     virtual std::vector<char> & getContent() {return this->content;}
     virtual int & getContentLength() {return this->contentLength;}
@@ -16,7 +17,7 @@ class HttpParser {
     protected:
     bool isCompleted;
     std::vector<char> header;
-    std::vector<char> content; // wait to be parsed
+    std::vector<char> content;
     int contentLength;
     std::vector<char> transferEncoding;
     virtual void clear();
@@ -85,6 +86,26 @@ bool HttpParser::parseTransferEncoding(std::vector<char> & msg) {
         return true;
     }
     return false;
+}
+
+std::vector<char> HttpParser::getFirstLine() {
+    std::vector<char> firstLine;
+    if (this->header.size() == 0) {
+        throw std::invalid_argument("first line has not been parsed yet!");
+    }
+    for (size_t i = 0; i < this->header.size(); i++) {
+        if (this->header[i] != '\r') { // find the first '\r'
+            firstLine.push_back(this->header[i]);
+        }
+        else {
+            break;
+        }
+    }
+    if (firstLine.size() > 0) {
+        // appendCstrToVectorChar(firstLine, "\r\n");  // if don't use this line, remember push back '\0'
+        firstLine.push_back('\0');
+    }
+    return firstLine;
 }
 
 const char * HttpParser::parseHeader(std::vector<char> & msg) {

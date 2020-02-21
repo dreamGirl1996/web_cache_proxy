@@ -29,6 +29,7 @@ ServerSocket & serverSocket, ClientSocket & clientSocket, connect_pair_t & conne
         std::tm datetime = getDatetime(datetimeVectorChar);
         std::cout << "datetime: [" << std::put_time(&datetime, "%c") << "]\n";
     }
+    std::cout << "Response first line: [" << response.getFirstLine().data() << "]\n";
     if (responseHeader.size() > 0) {
         std::cout << "\nResponse header:\n[" << responseHeader.data() << "]\n";
     }
