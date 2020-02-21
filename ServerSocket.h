@@ -166,13 +166,18 @@ bool ServerSocket::socketRecv(std::vector<char> & recvMsg, connect_pair_t & conn
     int numbytes;
     char recvBuf[MAX_DATA_SIZE];
 
-    struct timeval begin, now;
-    double timeDiff;
-    gettimeofday(&begin, NULL);
+    // struct timeval begin, now;
+    // double timeDiff;
+    // gettimeofday(&begin, NULL);
+
+    struct timeval tv;
+    tv.tv_sec = SERVER_RECV_TIME_OUT;
+    tv.tv_usec = 0;
+    setsockopt(connectPair.first, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
     while (1) { 
-        gettimeofday(&now, NULL);
-        timeDiff = (now.tv_sec - begin.tv_sec) + 1e-6 * (now.tv_usec - begin.tv_usec);
-        if (timeDiff > SERVER_RECV_TIME_OUT) {break;}
+        // gettimeofday(&now, NULL);
+        // timeDiff = (now.tv_sec - begin.tv_sec) + 1e-6 * (now.tv_usec - begin.tv_usec);
+        // if (timeDiff > SERVER_RECV_TIME_OUT) {return false;}
         
         memset(recvBuf, 0, sizeof recvBuf);
         // MSG_DONTWAIT or 0

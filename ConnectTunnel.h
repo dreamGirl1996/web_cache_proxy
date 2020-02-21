@@ -5,12 +5,17 @@
 #include "ClientSocket.h"
 
 // -1: error
-//  0: break
+//  0: break, or no data
 //  1: continue
 int tunnelTransfer(std::vector<char> & transfer, Response & response, 
 fd_set & socket_set, int & client_fd, int & server_fd) {
     if (FD_ISSET(client_fd, &socket_set)) {
         try {
+            struct timeval tv;
+            tv.tv_sec = CLIENT_RECV_TIME_OUT;
+            tv.tv_usec = 0;
+            setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+
             transfer.resize(65535, 0);
             size_t recvbyte_num = recv(client_fd, &transfer.data()[0], 65535, 0);
             if (recvbyte_num <= 0) {
@@ -19,13 +24,18 @@ fd_set & socket_set, int & client_fd, int & server_fd) {
             send(server_fd,transfer.data(), recvbyte_num, 0);
             //response.parse(transfer);
         }
-        catch (std::invalid_argument &e){
+        catch (std::invalid_argument &e) {
             std::cerr << e.what() << std::endl;
             return -1;
         }
     }
     else if(FD_ISSET(server_fd, &socket_set)){
         try {
+            struct timeval tv;
+            tv.tv_sec = SERVER_RECV_TIME_OUT;
+            tv.tv_usec = 0;
+            setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+
             transfer.resize(65535,0);
             size_t recvbyte_num = recv(server_fd, &transfer.data()[0], 65535, 0);
             if (recvbyte_num <= 0) {
@@ -34,7 +44,7 @@ fd_set & socket_set, int & client_fd, int & server_fd) {
             send(client_fd, transfer.data(), recvbyte_num,0);
             //response.parse(transfer);
         }
-        catch (std::invalid_argument & e){
+        catch (std::invalid_argument & e) {
             std::cerr << e.what() << std::endl;
             return -1;
         }
@@ -74,7 +84,9 @@ bool handleConnect(ServerSocket & serverSocket, ClientSocket & clientSocket, con
                 Response response;
                 int r = tunnelTransfer(transfer, response, socket_set, client_fd, server_fd);
                 if (r == 0) {
-                    break;
+                    // break;
+                    std::cout << "no data\n";
+                    return true;
                 }
                 else if (r == -1) {
                     std::cerr << "Error occured in tunnelTransfer\n";
