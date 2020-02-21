@@ -88,24 +88,44 @@ bool Request::parseHostName(std::vector<char> & msg) {
     if (*pch == '\0') {
         return false;
     }
-    if (tempHostName.size() > 0) {
-        cstrToVectorChar(this->port, "80");
-    }
-    for (size_t i = 0; i < tempHostName.size(); i++) {
-        if (tempHostName[i] == ':') {
-            if (i < tempHostName.size() - 1 && tempHostName[i+1] == '4') {
-                cstrToVectorChar(this->port, "443");
-            }
-            while (tempHostName.back() != ':') {
-                tempHostName.pop_back();
-            }
-            tempHostName.pop_back();
-        }
-    }
+
     if (tempHostName.size() > 0) {
         tempHostName.push_back('\0');
+        if (strstr(tempHostName.data(), ":") != NULL) {
+            tempHostName.pop_back(); // pop '\0'
+            while (tempHostName.back() != ':') {
+                this->port.push_back(tempHostName[tempHostName.size()-1]);
+                tempHostName.pop_back(); 
+            }
+            tempHostName.pop_back();  // pop ':'
+            if (this->port.size() > 0) {
+                std::reverse(this->port.begin(), this->port.end());
+                this->port.push_back('\0');
+            }
+            tempHostName.push_back('\0');
+        }
+        else {
+            // tempHostName.pop_back(); // pop '\0' // commented if tempHost already pushed '\0'
+            cstrToVectorChar(this->port, "80");
+        }
         this->hostName = tempHostName;
     }
+    // std::cout << this->hostName.data() << "\n";
+    // std::cout << this->port.data() << "\n";
+
+    // for (size_t i = 0; i < tempHostName.size(); i++) {
+    //     if (tempHostName[i] == ':') {
+    //         if (i < tempHostName.size() - 1 && tempHostName[i+1] == '4') {
+    //             cstrToVectorChar(this->port, "443");
+    //         }
+    //         tempHostName.pop_back();
+    //     }
+    // }
+    
+    // if (tempHostName.size() > 0) {
+    //     tempHostName.push_back('\0');
+    //     this->hostName = tempHostName;
+    // }
     
     return true;
 }

@@ -64,6 +64,7 @@ bool ClientSocket::setup() {
     if ((rv = getaddrinfo(this->hostName.data(), this->port.data(), &hints, &servinfo)) != 0) { // servinfo: linked list
         std::cerr << "proxy ClientSocket getaddrinfo: " << gai_strerror(rv) << "\n";
         std::cerr << "hostName: " << this->hostName.data() << "\n";
+        std::cerr << "port: " << this->port.data() << "\n";
         return false;
     }
 
@@ -83,6 +84,8 @@ bool ClientSocket::setup() {
 
     if (p == NULL) {
         std::cerr << "proxy ClientSocket: failed to connect" << "\n";
+        std::cerr << "hostName: " << this->hostName.data() << "\n";
+        std::cerr << "port: " << this->port.data() << "\n";
         return false;
     }
 
