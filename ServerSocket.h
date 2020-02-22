@@ -182,7 +182,10 @@ bool ServerSocket::socketRecv(std::vector<char> & recvMsg, connect_pair_t & conn
         memset(recvBuf, 0, sizeof recvBuf);
         // MSG_DONTWAIT or 0
         if ((numbytes = recv(connectPair.first, recvBuf, MAX_DATA_SIZE, 0)) > 0) {
-            recvMsg.push_back(recvBuf[0]);
+            // recvMsg.push_back(recvBuf[0]);
+            for (int i = 0; i < numbytes; i++) {
+                recvMsg.push_back(recvBuf[i]);
+            }
         }
         else {
             // Do something?

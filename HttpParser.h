@@ -2,11 +2,22 @@
 #define __HTTPPARSER_H__
 
 #include "utils.h"
+#include <set>
+#include <unordered_map>
 
+/*
+built-in general headers: Content-Length, Transfer-Encoding
+built-in request headers: Host
+built-in response headers: Date
+*/
+
+typedef std::unordered_map<std::string, std::vector<char> > header_fields_t;
+typedef std::set<std::string> built_in_headers_t;
 class HttpParser {
     public:
     HttpParser();
     virtual bool parse(std::vector<char> & msg) = 0;
+    virtual header_fields_t & getHeaderFields() {return this->headerFields;}
     virtual bool & getIsCompleted() {return this->isCompleted;}
     virtual std::vector<char> & getFirstLine() {return this->firstLine;}
     virtual std::vector<char> & getHeader() {return this->header;}
@@ -15,6 +26,8 @@ class HttpParser {
     virtual std::vector<char> & getTransferEncoding() {return this->transferEncoding;}
 
     protected:
+    built_in_headers_t builtInHeaders;
+    header_fields_t headerFields;
     bool isCompleted;
     std::vector<char> firstLine;
     std::vector<char> header;
@@ -22,6 +35,7 @@ class HttpParser {
     int contentLength;
     std::vector<char> transferEncoding;
     virtual void clear();
+    virtual bool parseHeaderFields();
     virtual bool checkIsCompleted(std::vector<char> & msg);
     virtual const char * parseFirstLine(std::vector<char> & msg);
     virtual const char * parseHeader(std::vector<char> & msg);
@@ -30,13 +44,69 @@ class HttpParser {
     virtual bool parseTransferEncoding(std::vector<char> & msg);
 };
 
-HttpParser::HttpParser() : isCompleted(false), header(), contentLength(-1), transferEncoding() {}
+HttpParser::HttpParser() : headerFields(), isCompleted(false), firstLine(), header(), \
+contentLength(-1), transferEncoding() {
+    this->builtInHeaders.insert("Content-Length");
+    this->builtInHeaders.insert("Transfer-Encoding");
+}
 
 void HttpParser::clear() {
+    this->headerFields.clear();
     this->isCompleted = false;
     cleanVectorChar(this->header);
     this->contentLength = -1;
     cleanVectorChar(this->transferEncoding);
+}
+
+bool HttpParser::parseHeaderFields() {
+    if (this->header.size() == 0) {
+        return false;
+    }
+    const char * pend = strstr(this->header.data(), "\r\n\r\n");
+    if (pend == NULL) {
+        return false;
+    }
+    const char * pcur = this->header.data();
+    while (pcur < pend) {
+        std::string key;
+        std::vector<char> value;
+        while (*pcur != ':' && *pcur != '\0') {
+            key.push_back(*pcur);
+            pcur = pcur + 1;
+        }
+        if (*pcur == '\0') {
+            return false;
+        }
+        if (this->builtInHeaders.find(key) != builtInHeaders.end()) {  // exists
+            while (*pcur != '\r' && *pcur != '\0') {
+                pcur = pcur + 1;
+            }
+            if (*pcur == '\0') {
+                return false;
+            }
+            pcur = pcur + strlen("\r\n"); // dangerous here!
+            continue;
+        }
+        pcur = pcur + 1;
+        skipSpace(&pcur);
+        while (*pcur != '\r' && *pcur != '\0') {
+            value.push_back(*pcur);
+            pcur = pcur + 1;
+        }
+        if (*pcur == '\0') {
+            return false;
+        }
+        pcur = pcur + strlen("\r\n"); // dangerous here!
+        if (key.size() > 0 && value.size() > 0) {
+            // key.push_back('\0'); // it's a string
+            value.push_back('\0');
+            // if (this->builtInHeaders.find(key) == builtInHeaders.end()) {
+            this->headerFields[key] = value;
+            // }
+        }
+    }
+
+    return true;
 }
 
 bool HttpParser::checkIsCompleted(std::vector<char> & msg) {

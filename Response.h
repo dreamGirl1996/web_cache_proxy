@@ -13,6 +13,8 @@ class Response : public HttpParser {
     virtual void clearResponse();
     virtual bool parse(std::vector<char> & msg);
     virtual std::vector<char> & getDatetimeVectorChar() {return this->datetime;}
+    virtual std::vector<char> & getTimeZone() {return this->timeZone;}
+    virtual std::vector<char> reconstructLinedHeaders();
     
     protected:
     std::vector<char> datetime;
@@ -20,7 +22,9 @@ class Response : public HttpParser {
     virtual bool parseDateTime(std::vector<char> & msg);
 };
 
-Response::Response() : HttpParser() {}
+Response::Response() : HttpParser() {
+    this->builtInHeaders.insert("Date");
+}
 
 bool Response::parse(std::vector<char> & msg) {
     msg.push_back('\0');
@@ -30,6 +34,9 @@ bool Response::parse(std::vector<char> & msg) {
         }
         if (this->header.size() == 0) {
             this->parseHeader(msg);
+        }
+        if (this->headerFields.size() == 0) {
+            this->parseHeaderFields();
         }
         if (this->contentLength < 0) {
             this->parseContentLength(msg);
@@ -62,6 +69,55 @@ bool Response::parse(std::vector<char> & msg) {
 
 void Response::clearResponse() {
     this->clear();
+    cleanVectorChar(this->datetime);
+    cleanVectorChar(this->timeZone);
+}
+
+std::vector<char> Response::reconstructLinedHeaders() {
+    std::vector<char> recon;
+    // // First line
+    // std::vector<char> firstLine = response.getFirstLine();
+    // // Date
+    // std::vector<char> datetimeVectorChar = response.getDatetimeVectorChar();
+    // std::vector<char> timeZone = response.getTimeZone();
+    // // Content-Length
+    // int contentLength = response.getContentLength();
+    // // Transfer-Encoding
+    // std::vector<char> transferEncoding = response.getTransferEncoding();
+    // // Header fields
+    // header_fields_t headerFields = response.getHeaderFields();
+    
+    if (this->firstLine.size() > 0) {
+        appendCstrToVectorChar(recon, this->firstLine.data());
+        appendCstrToVectorChar(recon, "\r\n");
+    }
+    if (this->datetime.size() > 0) {
+        appendCstrToVectorChar(recon, "Date: ");
+        appendCstrToVectorChar(recon, this->datetime.data());
+        if (this->timeZone.size() > 0) {
+            appendCstrToVectorChar(recon, " ");
+            appendCstrToVectorChar(recon, this->timeZone.data());
+        }
+        appendCstrToVectorChar(recon, "\r\n");
+    }
+    if (this->contentLength > -1) {
+        appendCstrToVectorChar(recon, "Content-Length: ");
+        std::stringstream cl;
+        cl << this->contentLength;
+        appendCstrToVectorChar(recon, cl.str().c_str());
+        appendCstrToVectorChar(recon, "\r\n");
+    }
+    if (this->headerFields.size() > 0) {
+        std::stringstream hd;
+        for (header_fields_t::iterator it = this->headerFields.begin();
+        it != this->headerFields.end(); ++it) {
+            hd << it->first << ": " << it->second.data() << "\r\n";
+        }
+        appendCstrToVectorChar(recon, hd.str().c_str());
+    }
+    appendCstrToVectorChar(recon, "\r\n");
+
+    return recon;
 }
 
 bool Response::parseDateTime(std::vector<char> & msg) {

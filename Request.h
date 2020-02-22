@@ -16,6 +16,7 @@ class Request : public HttpParser {
     virtual std::vector<char> & getHostName() {return this->hostName;}
     virtual std::vector<char> & getPort() {return this->port;}
     virtual std::vector<char> & getMethod() {return this->method;}
+    virtual std::vector<char> reconstructLinedHeaders();
 
     protected:
     std::vector<char> hostName;
@@ -25,7 +26,9 @@ class Request : public HttpParser {
     virtual bool parseMethod(std::vector<char> & msg);
 };
 
-Request::Request() : HttpParser(), hostName(), port(), method() {}
+Request::Request() : HttpParser(), hostName(), port(), method() {
+    this->builtInHeaders.insert("Host");
+}
 
 bool Request::parse(std::vector<char> & msg) {
     msg.push_back('\0');
@@ -35,6 +38,9 @@ bool Request::parse(std::vector<char> & msg) {
         }
         if (this->header.size() == 0) {
             this->parseHeader(msg);
+        }
+        if (this->headerFields.size() == 0) {
+            this->parseHeaderFields();
         }
         if (this->hostName.size() == 0) {
             this->parseHostName(msg);
@@ -76,6 +82,38 @@ void Request::clearRequest() {
     cleanVectorChar(this->method);
 }
 
+std::vector<char> Request::reconstructLinedHeaders() {
+    std::vector<char> recon;
+    /*
+        First line, Host, header fields
+    */
+    
+    if (this->firstLine.size() > 0) {
+        appendCstrToVectorChar(recon, this->firstLine.data());
+        appendCstrToVectorChar(recon, "\r\n");
+    }
+    if (this->hostName.size() > 0) {
+        appendCstrToVectorChar(recon, "Host: ");
+        appendCstrToVectorChar(recon, this->hostName.data());
+        if (this->port.size() > 0 && strcmp(this->port.data(), "80") != 0) {
+            appendCstrToVectorChar(recon, ":");
+            appendCstrToVectorChar(recon, this->port.data());
+        }
+        appendCstrToVectorChar(recon, "\r\n");
+    }
+    if (this->headerFields.size() > 0) {
+        std::stringstream hd;
+        for (header_fields_t::iterator it = this->headerFields.begin();
+        it != this->headerFields.end(); ++it) {
+            hd << it->first << ": " << it->second.data() << "\r\n";
+        }
+        appendCstrToVectorChar(recon, hd.str().c_str());
+    }
+    appendCstrToVectorChar(recon, "\r\n");
+
+    return recon;
+}
+
 bool Request::parseHostName(std::vector<char> & msg) {
     const char *pch = strstr(msg.data(), "Host:");
     if (pch == NULL) {
@@ -113,22 +151,6 @@ bool Request::parseHostName(std::vector<char> & msg) {
         }
         this->hostName = tempHostName;
     }
-    // std::cout << this->hostName.data() << "\n";
-    // std::cout << this->port.data() << "\n";
-
-    // for (size_t i = 0; i < tempHostName.size(); i++) {
-    //     if (tempHostName[i] == ':') {
-    //         if (i < tempHostName.size() - 1 && tempHostName[i+1] == '4') {
-    //             cstrToVectorChar(this->port, "443");
-    //         }
-    //         tempHostName.pop_back();
-    //     }
-    // }
-    
-    // if (tempHostName.size() > 0) {
-    //     tempHostName.push_back('\0');
-    //     this->hostName = tempHostName;
-    // }
     
     return true;
 }
