@@ -24,6 +24,8 @@ class HttpParser {
     virtual std::vector<char> & getContent() {return this->content;}
     virtual int & getContentLength() {return this->contentLength;}
     virtual std::vector<char> & getTransferEncoding() {return this->transferEncoding;}
+    virtual std::vector<char> reconstructLinedHeaders() = 0;
+    virtual std::vector<char> reconstruct();  // line + header + content
 
     protected:
     built_in_headers_t builtInHeaders;
@@ -56,6 +58,15 @@ void HttpParser::clear() {
     cleanVectorChar(this->header);
     this->contentLength = -1;
     cleanVectorChar(this->transferEncoding);
+}
+
+std::vector<char> HttpParser::reconstruct() {
+    std::vector<char> recon;
+    recon = this->reconstructLinedHeaders();
+    if (this->content.size() > 0) {
+        appendCstrToVectorChar(recon, this->content.data());
+    }
+    return recon;
 }
 
 bool HttpParser::parseHeaderFields() {

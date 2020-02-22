@@ -17,6 +17,7 @@ class Request : public HttpParser {
     virtual std::vector<char> & getPort() {return this->port;}
     virtual std::vector<char> & getMethod() {return this->method;}
     virtual std::vector<char> reconstructLinedHeaders();
+    // virtual std::vector<char> reconstructContent();  // content
 
     protected:
     std::vector<char> hostName;

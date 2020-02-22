@@ -8,6 +8,7 @@
 #include <cstring>
 #include <locale>
 #include <iomanip>
+#include <algorithm>
 // #include <exception>
 
 void printALine(size_t size) {
@@ -42,7 +43,7 @@ void cstrToVectorChar(std::vector<char> & vecChar, const char * cstr) {
 }
 
 void appendCstrToVectorChar(std::vector<char> & vecChar, const char * cstr) {
-    if (vecChar.size() > 0 && vecChar[vecChar.size()-1] == '\0') {
+    while (vecChar.size() > 0 && vecChar[vecChar.size()-1] == '\0') {
         vecChar.pop_back(); // pop '\0'
     }
     for (size_t i = 0; i < strlen(cstr); i++) {
@@ -53,9 +54,40 @@ void appendCstrToVectorChar(std::vector<char> & vecChar, const char * cstr) {
     }
 }
 
-std::tm getDatetime(std::vector<char> & datetimeVectorChar) {
+typedef std::pair<std::tm, std::vector<char> > datetime_zone_t;
+// datetimeVectorChar: datetime TIME_ZONE
+datetime_zone_t getDatetimeAndZone(std::vector<char> datetime) {
+    if (datetime.size() == 0) {
+        std::stringstream ess;
+        ess << "datetime has no content in " << __func__;
+        throw std::invalid_argument(ess.str());
+    }
+    if (datetime[datetime.size()-1] != '\0') {
+        datetime.push_back('\0');
+    }
+    if (strstr(datetime.data(), " ") == NULL) {
+        std::stringstream ess;
+        ess << __func__ << ": no space found in datetime!";
+        throw std::invalid_argument(ess.str());
+    }
+    datetime.pop_back(); // pop '\0'
+
+    std::vector<char> timeZone;
+    while (datetime[datetime.size()-1] != ' ') {
+        timeZone.push_back(datetime[datetime.size()-1]);
+        datetime.pop_back();
+    }
+    datetime.pop_back(); // pop ' '
+    if (timeZone.size() > 0) {
+        std::reverse(timeZone.begin(), timeZone.end());
+        timeZone.push_back('\0');
+    }
+    if (datetime.size() > 0) {
+        datetime.push_back('\0');
+    }
+
     std::tm t = {};
-    std::istringstream ss(datetimeVectorChar.data());
+    std::istringstream ss(datetime.data());
     // ss.imbue(std::locale("de_DE.utf-8"));
     ss >> std::get_time(&t, "%a, %d %b %Y %H:%M:%S");
     if (ss.fail()) {
@@ -63,7 +95,9 @@ std::tm getDatetime(std::vector<char> & datetimeVectorChar) {
         ess << "Parse failed on datetime in " << __func__;
         throw std::invalid_argument(ess.str());
     } 
-    return t;
+
+    datetime_zone_t res(t, timeZone);
+    return res;
 }
 
 #endif

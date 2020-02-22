@@ -13,12 +13,13 @@ class Response : public HttpParser {
     virtual void clearResponse();
     virtual bool parse(std::vector<char> & msg);
     virtual std::vector<char> & getDatetimeVectorChar() {return this->datetime;}
-    virtual std::vector<char> & getTimeZone() {return this->timeZone;}
+    // virtual std::vector<char> & getTimeZone() {return this->timeZone;}
     virtual std::vector<char> reconstructLinedHeaders();
+    // virtual std::vector<char> reconstructContent();  // content
     
     protected:
     std::vector<char> datetime;
-    std::vector<char> timeZone;
+    // std::vector<char> timeZone;
     virtual bool parseDateTime(std::vector<char> & msg);
 };
 
@@ -44,9 +45,9 @@ bool Response::parse(std::vector<char> & msg) {
         if (this->datetime.size() == 0) {
             this->parseDateTime(msg);
         }
-        if (this->datetime.size() > 0) {
-            assert(this->timeZone.size() > 0);
-        }
+        // if (this->datetime.size() > 0) {
+        //     assert(this->timeZone.size() > 0);
+        // }
         //
         if (this->transferEncoding.size() == 0) {
             this->parseTransferEncoding(msg);
@@ -70,7 +71,7 @@ bool Response::parse(std::vector<char> & msg) {
 void Response::clearResponse() {
     this->clear();
     cleanVectorChar(this->datetime);
-    cleanVectorChar(this->timeZone);
+    // cleanVectorChar(this->timeZone);
 }
 
 std::vector<char> Response::reconstructLinedHeaders() {
@@ -94,10 +95,10 @@ std::vector<char> Response::reconstructLinedHeaders() {
     if (this->datetime.size() > 0) {
         appendCstrToVectorChar(recon, "Date: ");
         appendCstrToVectorChar(recon, this->datetime.data());
-        if (this->timeZone.size() > 0) {
-            appendCstrToVectorChar(recon, " ");
-            appendCstrToVectorChar(recon, this->timeZone.data());
-        }
+        // if (this->timeZone.size() > 0) {
+        //     appendCstrToVectorChar(recon, " ");
+        //     appendCstrToVectorChar(recon, this->timeZone.data());
+        // }
         appendCstrToVectorChar(recon, "\r\n");
     }
     if (this->contentLength > -1) {
@@ -136,21 +137,6 @@ bool Response::parseDateTime(std::vector<char> & msg) {
         return false;
     }
     if (tempDate.size() > 0) {
-        tempDate.push_back('\0');
-        if (strstr(tempDate.data(), " ") == NULL) {
-            std::cerr << "no space found in datetime!\n";
-            return false;
-        }
-        tempDate.pop_back(); // pop '\0'
-        while (tempDate[tempDate.size()-1] != ' ') {
-            this->timeZone.push_back(tempDate[tempDate.size()-1]);
-            tempDate.pop_back();
-        }
-        tempDate.pop_back(); // pop ' '
-        if (this->timeZone.size() > 0) {
-            std::reverse(this->timeZone.begin(), this->timeZone.end());
-            this->timeZone.push_back('\0');
-        }
         tempDate.push_back('\0');
         this->datetime = tempDate;
         return true;

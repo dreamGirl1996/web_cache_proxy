@@ -20,6 +20,11 @@ ServerSocket & serverSocket, ClientSocket & clientSocket, connect_pair_t & conne
         return false;
     } // commented when responseMst resized in client socketRecv
 
+    if (response.getDatetimeVectorChar().size() > 0) {
+        datetime_zone_t dz = getDatetimeAndZone(response.getDatetimeVectorChar());
+        std::cout << "\ndatetime: " << std::put_time(&dz.first, "%c") << "\n";
+        std::cout << "\ntimeZone: " << dz.second.data() << "\n";
+    }
     std::cout << "\nResponse header: [\n" << response.reconstructLinedHeaders().data() << "]\n";
 
     if (!serverSocket.socketSend(responseMsg, connectPair)) {
