@@ -9,7 +9,10 @@
 #include <locale>
 #include <iomanip>
 #include <algorithm>
+#include <mutex>
 // #include <exception>
+
+std::mutex mtx;
 
 void printALine(size_t size) {
     std::string line;
@@ -51,6 +54,18 @@ void appendCstrToVectorChar(std::vector<char> & vecChar, const char * cstr) {
     }
     if (vecChar.size() > 0) {
         vecChar.push_back('\0');
+    }
+}
+
+void appendTwoVectorChars(std::vector<char> & des, const std::vector<char> & sou) {
+    while (des.size() > 0 && des.back() == '\0') {
+        des.pop_back(); // pop '\0'
+    }
+    for (size_t i = 0; i < sou.size(); i++) {
+        des.push_back(sou[i]);
+    }
+    if (des.size() > 0 && des.back() != '\0') {
+        des.push_back('\0');
     }
 }
 
@@ -98,6 +113,28 @@ datetime_zone_t getDatetimeAndZone(std::vector<char> datetime) {
 
     datetime_zone_t res(t, timeZone);
     return res;
+}
+
+std::vector<char> obtainContent(std::vector<char> & msg) {
+    std::vector<char> content;
+    const char * pcur = strstr(msg.data(), "\r\n\r\n");
+    if (pcur == NULL) {
+        return content;
+    }
+
+    bool sawHead = false;
+    for (size_t i = 0; i < msg.size(); i++) {
+        if (!sawHead && msg[i] == '\r' && msg[i+1] == '\n' && 
+        msg[i+2] == '\r' && msg[i+3] == '\n') {
+            sawHead = true;
+            i = i + 4;
+        }
+        if (sawHead) {
+            content.push_back(msg[i]);
+        }
+    }
+
+    return content;
 }
 
 #endif

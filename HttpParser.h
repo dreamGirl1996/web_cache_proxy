@@ -4,6 +4,7 @@
 #include "utils.h"
 #include <set>
 #include <unordered_map>
+#include <cassert>
 
 /*
 built-in general headers: Content-Length, Transfer-Encoding
@@ -11,14 +12,15 @@ built-in request headers: Host
 built-in response headers: Date
 */
 
-typedef std::unordered_map<std::string, std::vector<char> > header_fields_t;
+typedef std::unordered_map<std::string, std::vector<char> > mapped_field_t;
 typedef std::set<std::string> built_in_headers_t;
 class HttpParser {
     public:
     HttpParser();
     virtual bool parse(std::vector<char> & msg) = 0;
-    virtual header_fields_t & getHeaderFields() {return this->headerFields;}
+    virtual mapped_field_t & getHeaderFields() {return this->headerFields;}
     virtual bool & getIsCompleted() {return this->isCompleted;}
+    virtual std::vector<char> & getProtocal() {return this->protocal;}
     virtual std::vector<char> & getFirstLine() {return this->firstLine;}
     virtual std::vector<char> & getHeader() {return this->header;}
     virtual std::vector<char> & getContent() {return this->content;}
@@ -29,8 +31,9 @@ class HttpParser {
 
     protected:
     built_in_headers_t builtInHeaders;
-    header_fields_t headerFields;
+    mapped_field_t headerFields;
     bool isCompleted;
+    std::vector<char> protocal;
     std::vector<char> firstLine;
     std::vector<char> header;
     std::vector<char> content;
@@ -41,13 +44,13 @@ class HttpParser {
     virtual bool checkIsCompleted(std::vector<char> & msg);
     virtual const char * parseFirstLine(std::vector<char> & msg);
     virtual const char * parseHeader(std::vector<char> & msg);
-    virtual const char * parseContent(std::vector<char> & msg);
+    // virtual const char * parseContent(std::vector<char> & msg);
     virtual bool parseContentLength(std::vector<char> & msg);
     virtual bool parseTransferEncoding(std::vector<char> & msg);
 };
 
-HttpParser::HttpParser() : headerFields(), isCompleted(false), firstLine(), header(), \
-contentLength(-1), transferEncoding() {
+HttpParser::HttpParser() : headerFields(), isCompleted(false), protocal(), firstLine(), header(), \
+content(), contentLength(-1), transferEncoding() {
     this->builtInHeaders.insert("Content-Length");
     this->builtInHeaders.insert("Transfer-Encoding");
 }
@@ -55,6 +58,8 @@ contentLength(-1), transferEncoding() {
 void HttpParser::clear() {
     this->headerFields.clear();
     this->isCompleted = false;
+    cleanVectorChar(this->protocal);
+    cleanVectorChar(this->firstLine);
     cleanVectorChar(this->header);
     this->contentLength = -1;
     cleanVectorChar(this->transferEncoding);
@@ -63,8 +68,11 @@ void HttpParser::clear() {
 std::vector<char> HttpParser::reconstruct() {
     std::vector<char> recon;
     recon = this->reconstructLinedHeaders();
+    // if (this->contentLength > 0) {
+    //     assert(this->content.size() > 0);
+    // }
     if (this->content.size() > 0) {
-        appendCstrToVectorChar(recon, this->content.data());
+        appendTwoVectorChars(recon, this->content);
     }
     return recon;
 }
@@ -126,21 +134,43 @@ bool HttpParser::checkIsCompleted(std::vector<char> & msg) {
         this->isCompleted = false;
         return false;
     }
-    if (this->contentLength > 0 || 
-    (this->transferEncoding.size() > 0 && 
-    strcmp(this->transferEncoding.data(), "chunked") == 0)) {
-        if (this->content.size() > 0) {
+
+    if (this->contentLength > 0) {
+        if ((int) msg.size() - (int) this->header.size() -
+        (int) this->firstLine.size() - (int) strlen("\r\n") >= this->contentLength) {
+            this->isCompleted = true;
+            return true;
+        }
+    }
+    else if (this->transferEncoding.size() > 0 && 
+    strcmp(this->transferEncoding.data(), "chunked") == 0) {
+        if (strstr(msg.data(), "\r\n0\r\n\r\n")) {
             this->isCompleted = true;
             return true;
         }
     }
     else {
-    // if (msg.size() > 0) {
         if (strstr(msg.data(), "\r\n\r\n") != NULL) {
             this->isCompleted = true;
             return true;
         }
     }
+
+    // if (this->contentLength > 0 || 
+    // (this->transferEncoding.size() > 0 && 
+    // strcmp(this->transferEncoding.data(), "chunked") == 0)) {
+    //     if (this->content.size() > 0) {
+    //         this->isCompleted = true;
+    //         return true;
+    //     }
+    // }
+    // else {
+    // // if (msg.size() > 0) {
+    //     if (strstr(msg.data(), "\r\n\r\n") != NULL) {
+    //         this->isCompleted = true;
+    //         return true;
+    //     }
+    // }
     this->isCompleted = false;
     return false;
 }
@@ -212,58 +242,57 @@ const char * HttpParser::parseHeader(std::vector<char> & msg) {
     return NULL;
 }
 
-const char * HttpParser::parseContent(std::vector<char> & msg) {
-    if (this->header.size() == 0) {
-        return NULL;
-    }
-    if (contentLength <= 0 && (this->transferEncoding.size() == 0 ||
-    strcmp(this->transferEncoding.data(), "chunked") != 0)) {
-        return NULL;
-    }
-    if (msg.size() <= this->header.size()) {
-        return NULL;
-    }
+// const char * HttpParser::parseContent(std::vector<char> & msg) {
+//     if (this->header.size() == 0) {
+//         return NULL;
+//     }
+//     if (contentLength <= 0 && (this->transferEncoding.size() == 0 ||
+//     strcmp(this->transferEncoding.data(), "chunked") != 0)) {
+//         return NULL;
+//     }
+//     if (msg.size() <= this->header.size()) {
+//         return NULL;
+//     }
 
-    const char * pcur = strstr(msg.data(), "\r\n\r\n");
-    if (pcur == NULL) {
-        std::cerr << "Not found cslr cslr in " << __func__ << "\n";
-        return NULL;
-    }
-    pcur = pcur + strlen("\r\n\r\n"); 
+//     const char * pcur = strstr(msg.data(), "\r\n\r\n");
+//     if (pcur == NULL) {
+//         std::cerr << "Not found cslr cslr in " << __func__ << "\n";
+//         return NULL;
+//     }
+//     pcur = pcur + strlen("\r\n\r\n"); 
 
-    if (contentLength <= 0) { // chunked data
-        //std::cout << "chunked!\n";
-        const char * pend = strstr(msg.data(), "\r\n0\r\n\r\n");
-        if (pend == NULL) {
-            return NULL;
-        }
-        while (pcur < pend) {
-            this->content.push_back(*pcur);
-            pcur = pcur + 1;
-        }
-        if (this->content.size() > 0) {
-            appendCstrToVectorChar(this->content, "\r\n0\r\n\r\n");
-            pend = pend - 1 + strlen("\r\n0\r\n\r\n");
-            return pend;
-        }
-    }
-    else { // content-length
-        // std::cout << "contentlenth!\n";
-        if ((int) msg.size() - (int) this->header.size() -
-        (int) this->firstLine.size() - (int) strlen("\r\n") >= this->contentLength) {
-            while (*pcur != '\0') {
-                this->content.push_back(*pcur);
-                pcur = pcur + 1;
-            }
-            if (this->content.size() > 0) {
-                this->content.push_back('\0');
-                return pcur;
-            }
-        }
-    }
+//     if (contentLength <= 0) { // chunked data
+//         //std::cout << "chunked!\n";
+//         const char * pend = strstr(msg.data(), "\r\n0\r\n\r\n");
+//         if (pend == NULL) {
+//             return NULL;
+//         }
+//         while (pcur < pend) {
+//             this->content.push_back(*pcur);
+//             pcur = pcur + 1;
+//         }
+//         if (this->content.size() > 0) {
+//             appendCstrToVectorChar(this->content, "\r\n0\r\n\r\n");
+//             pend = pend - 1 + strlen("\r\n0\r\n\r\n");
+//             return pend;
+//         }
+//     }
+//     else { // content-length
+//         if ((int) msg.size() - (int) this->header.size() -
+//         (int) this->firstLine.size() - (int) strlen("\r\n") >= this->contentLength - 1) {
+//             while (*pcur != '\0') {
+//                 this->content.push_back(*pcur);
+//                 pcur = pcur + 1;
+//             }
+//             if (this->content.size() > 0 && content.back() != '\0') {
+//                 this->content.push_back('\0');
+//                 return pcur;
+//             }
+//         }
+//     }
     
-    return NULL;
-}
+//     return NULL;
+// }
 
 bool HttpParser::parseContentLength(std::vector<char> & msg) {
     if (msg.size() == 0) {

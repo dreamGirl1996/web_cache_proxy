@@ -13,6 +13,7 @@ class Request : public HttpParser {
     Request();
     virtual void clearRequest();
     virtual bool parse(std::vector<char> & msg);
+    virtual std::vector<char> & getUri() {return this->uri;}
     virtual std::vector<char> & getHostName() {return this->hostName;}
     virtual std::vector<char> & getPort() {return this->port;}
     virtual std::vector<char> & getMethod() {return this->method;}
@@ -20,14 +21,16 @@ class Request : public HttpParser {
     // virtual std::vector<char> reconstructContent();  // content
 
     protected:
+    std::vector<char> uri;
     std::vector<char> hostName;
     std::vector<char> port;
-    std::vector<char> method; 
+    std::vector<char> method;
+    virtual bool parseFirstLineDetails(); 
     virtual bool parseHostName(std::vector<char> & msg);
     virtual bool parseMethod(std::vector<char> & msg);
 };
 
-Request::Request() : HttpParser(), hostName(), port(), method() {
+Request::Request() : HttpParser(), uri(), hostName(), port(), method() {
     this->builtInHeaders.insert("Host");
 }
 
@@ -36,6 +39,9 @@ bool Request::parse(std::vector<char> & msg) {
     try {
         if (this->firstLine.size() == 0) {
             this->parseFirstLine(msg);
+        }
+        if (this->uri.size() == 0) { // which means protocal is also empty
+            this->parseFirstLineDetails();
         }
         if (this->header.size() == 0) {
             this->parseHeader(msg);
@@ -59,9 +65,9 @@ bool Request::parse(std::vector<char> & msg) {
         if (this->transferEncoding.size() == 0) {
             this->parseTransferEncoding(msg);
         }
-        if (this->content.size() == 0) {
-            this->parseContent(msg);
-        }
+        // if (this->content.size() == 0) {
+        //     this->parseContent(msg);
+        // }
         if (this->checkIsCompleted(msg)) {
             msg.pop_back();
             return true;
@@ -78,41 +84,128 @@ bool Request::parse(std::vector<char> & msg) {
 
 void Request::clearRequest() {
     this->clear();
+    cleanVectorChar(this->uri);
     cleanVectorChar(this->hostName);
     cleanVectorChar(this->port);
     cleanVectorChar(this->method);
 }
 
 std::vector<char> Request::reconstructLinedHeaders() {
-    std::vector<char> recon;
     /*
         First line, Host, header fields
     */
     
-    if (this->firstLine.size() > 0) {
-        appendCstrToVectorChar(recon, this->firstLine.data());
-        appendCstrToVectorChar(recon, "\r\n");
+    std::vector<char> line;
+    if (this->method.size() > 0 && this->uri.size() > 0 && 
+    this->protocal.size() > 0) {
+        appendCstrToVectorChar(line, this->method.data());
+        appendCstrToVectorChar(line, " ");
+        appendCstrToVectorChar(line, this->uri.data());
+        // if (this->port.size() > 0 && strcmp(this->port.data(), "80") != 0) {
+        //     appendCstrToVectorChar(line, ":");
+        //     appendCstrToVectorChar(line, this->port.data());
+        // }
+        appendCstrToVectorChar(line, " ");
+        appendCstrToVectorChar(line, this->protocal.data());
     }
+    this->firstLine = line;
+
+    std::vector<char> hdr;
     if (this->hostName.size() > 0) {
-        appendCstrToVectorChar(recon, "Host: ");
-        appendCstrToVectorChar(recon, this->hostName.data());
+        appendCstrToVectorChar(hdr, "Host: ");
+        appendCstrToVectorChar(hdr, this->hostName.data());
         if (this->port.size() > 0 && strcmp(this->port.data(), "80") != 0) {
-            appendCstrToVectorChar(recon, ":");
-            appendCstrToVectorChar(recon, this->port.data());
+            appendCstrToVectorChar(hdr, ":");
+            appendCstrToVectorChar(hdr, this->port.data());
         }
-        appendCstrToVectorChar(recon, "\r\n");
+        appendCstrToVectorChar(hdr, "\r\n");
+    }
+    if (this->contentLength > -1) {
+        appendCstrToVectorChar(hdr, "Content-Length: ");
+        std::stringstream cl;
+        cl << this->contentLength;
+        appendCstrToVectorChar(hdr, cl.str().c_str());
+        appendCstrToVectorChar(hdr, "\r\n");
+    }
+    if (this->transferEncoding.size() > 0) {
+        appendCstrToVectorChar(hdr, "Transfer-Encoding: ");
+        appendTwoVectorChars(hdr, this->transferEncoding);
+        appendCstrToVectorChar(hdr, "\r\n");
     }
     if (this->headerFields.size() > 0) {
         std::stringstream hd;
-        for (header_fields_t::iterator it = this->headerFields.begin();
+        for (mapped_field_t::iterator it = this->headerFields.begin();
         it != this->headerFields.end(); ++it) {
             hd << it->first << ": " << it->second.data() << "\r\n";
         }
-        appendCstrToVectorChar(recon, hd.str().c_str());
+        appendCstrToVectorChar(hdr, hd.str().c_str());
     }
+    appendCstrToVectorChar(hdr, "\r\n");
+    this->header = hdr;
+
+    std::vector<char> recon;
+    appendCstrToVectorChar(recon, line.data());
     appendCstrToVectorChar(recon, "\r\n");
+    appendCstrToVectorChar(recon, hdr.data());
 
     return recon;
+}
+
+bool Request::parseFirstLineDetails() {
+    if (this->firstLine.size() == 0) {
+        return false;
+    }
+    const char * pcur = this->firstLine.data();
+    // Skip method
+    while (*pcur != ' ' && *pcur != '\0') {
+        pcur = pcur + 1;
+    }
+    if (*pcur == '\0') {
+        return false;
+    }
+    skipSpace(&pcur);
+    // Obtain uri
+    std::vector<char> tempUri;
+    while (*pcur != ' ' && *pcur != '\0') {
+        tempUri.push_back(*pcur);
+        pcur = pcur + 1;
+    }
+    if (*pcur == '\0') {
+        return false;
+    }
+    skipSpace(&pcur);
+    // Obtain protocal
+    std::vector<char> tempProtocal;
+    while (*pcur != '\0') {
+        tempProtocal.push_back(*pcur);
+        pcur = pcur + 1;
+    }
+
+    if (tempUri.size() > 0) {
+        tempUri.push_back('\0');
+        // if (strstr(tempUri.data(), ":") != NULL) {
+        //     tempUri.pop_back();  // pop '\0'
+        //     while (tempUri.back() != ':') {
+        //         tempUri.pop_back();
+        //     }
+        //     tempUri.pop_back(); // pop ':'
+        //     if (tempUri.size() > 0) {
+        //         tempUri.push_back('\0');
+        //         this->uri = tempUri;
+        //     }
+        // }
+        // else {
+        //     this->uri = tempUri;
+        // }
+        this->uri = tempUri;
+    }
+
+    if (tempProtocal.size() > 0) {
+        tempProtocal.push_back('\0');
+        this->protocal = tempProtocal;
+    }
+
+    return true;
 }
 
 bool Request::parseHostName(std::vector<char> & msg) {
@@ -144,7 +237,9 @@ bool Request::parseHostName(std::vector<char> & msg) {
                 std::reverse(this->port.begin(), this->port.end());
                 this->port.push_back('\0');
             }
-            tempHostName.push_back('\0');
+            if (tempHostName.size() > 0) {
+                tempHostName.push_back('\0');
+            }
         }
         else {
             // tempHostName.pop_back(); // pop '\0' // commented if tempHost already pushed '\0'

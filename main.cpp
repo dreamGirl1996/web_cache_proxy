@@ -6,10 +6,7 @@
 #include "ConnectTunnel.h"
 #include "GetHandler.h"
 #include <thread>
-#include <mutex>
 #include <functional>
-
-std::mutex mtx;
 
 void runProxy(ServerSocket & serverSocket, connect_pair_t connectPair) {
     std::vector<char> requestMsg;
@@ -23,7 +20,7 @@ void runProxy(ServerSocket & serverSocket, connect_pair_t connectPair) {
         closeSockfd(connectPair.first);
         return;
     }
-    
+
     std::vector<char> hostName = request.getHostName();
     std::vector<char> method = request.getMethod();
     std::vector<char> port = request.getPort();
@@ -32,13 +29,15 @@ void runProxy(ServerSocket & serverSocket, connect_pair_t connectPair) {
         closeSockfd(connectPair.first);
         return;
     }
-    
+    cleanVectorChar(request.getContent());
+    request.getContent() = obtainContent(requestMsg);
+    std::vector<char> reconReqMsg = request.reconstruct();
+
     printALine(32);
-    std::cout << "Request header:\n[" << request.reconstructLinedHeaders().data() << "]\n";
+    std::cout << "Request lined header:\n[" << request.reconstructLinedHeaders().data() << "]\n";
 
     ClientSocket clientSocket(hostName, port);
 
-    
     if (strcmp(method.data(), "CONNECT") == 0) {
         if (!handleConnect(serverSocket, clientSocket, connectPair)) {
             closeSockfd(connectPair.first);
@@ -46,13 +45,13 @@ void runProxy(ServerSocket & serverSocket, connect_pair_t connectPair) {
         }
     }
     else if (strcmp(method.data(), "GET") == 0) {
-        if (!handleGet(requestMsg, serverSocket, clientSocket, connectPair)) {
+        if (!handleGet(reconReqMsg, serverSocket, clientSocket, connectPair)) {
             closeSockfd(connectPair.first);
             return;
         }
     }
     else if (strcmp(method.data(), "POST") == 0) {
-        if (!handleGet(requestMsg, serverSocket, clientSocket, connectPair)) {
+        if (!handleGet(reconReqMsg, serverSocket, clientSocket, connectPair)) {
             closeSockfd(connectPair.first);
             return;
         }

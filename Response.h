@@ -18,12 +18,15 @@ class Response : public HttpParser {
     // virtual std::vector<char> reconstructContent();  // content
     
     protected:
+    std::vector<char> statusCode;
+    std::vector<char> reasonPhrase;
     std::vector<char> datetime;
     // std::vector<char> timeZone;
+    virtual bool parseFirstLineDetails();
     virtual bool parseDateTime(std::vector<char> & msg);
 };
 
-Response::Response() : HttpParser() {
+Response::Response() : HttpParser(), statusCode(), reasonPhrase(), datetime() {
     this->builtInHeaders.insert("Date");
 }
 
@@ -32,6 +35,9 @@ bool Response::parse(std::vector<char> & msg) {
     try {
         if (this->firstLine.size() == 0) {
             this->parseFirstLine(msg);
+        }
+        if (this->statusCode.size() == 0) { // which means protocal and reason phrase are also empty
+            this->parseFirstLineDetails();
         }
         if (this->header.size() == 0) {
             this->parseHeader(msg);
@@ -45,16 +51,13 @@ bool Response::parse(std::vector<char> & msg) {
         if (this->datetime.size() == 0) {
             this->parseDateTime(msg);
         }
-        // if (this->datetime.size() > 0) {
-        //     assert(this->timeZone.size() > 0);
-        // }
         //
         if (this->transferEncoding.size() == 0) {
             this->parseTransferEncoding(msg);
         }
-        if (this->content.size() == 0) {
-            this->parseContent(msg);
-        }
+        // if (this->content.size() == 0) {
+        //     this->parseContent(msg);
+        // }
         if (this->checkIsCompleted(msg)) {
             msg.pop_back();
             return true;
@@ -70,12 +73,13 @@ bool Response::parse(std::vector<char> & msg) {
 
 void Response::clearResponse() {
     this->clear();
+    cleanVectorChar(this->statusCode);
+    cleanVectorChar(this->reasonPhrase);
     cleanVectorChar(this->datetime);
     // cleanVectorChar(this->timeZone);
 }
 
 std::vector<char> Response::reconstructLinedHeaders() {
-    std::vector<char> recon;
     // // First line
     // std::vector<char> firstLine = response.getFirstLine();
     // // Date
@@ -86,39 +90,106 @@ std::vector<char> Response::reconstructLinedHeaders() {
     // // Transfer-Encoding
     // std::vector<char> transferEncoding = response.getTransferEncoding();
     // // Header fields
-    // header_fields_t headerFields = response.getHeaderFields();
+    // mapped_field_t headerFields = response.getHeaderFields();
     
-    if (this->firstLine.size() > 0) {
-        appendCstrToVectorChar(recon, this->firstLine.data());
-        appendCstrToVectorChar(recon, "\r\n");
+    std::vector<char> line;
+    if (this->protocal.size() > 0 && this->statusCode.size() > 0 && 
+    this->reasonPhrase.size() > 0) {
+        appendTwoVectorChars(line, this->protocal);
+        appendCstrToVectorChar(line, " ");
+        appendTwoVectorChars(line, this->statusCode);
+        appendCstrToVectorChar(line, " ");
+        appendTwoVectorChars(line, this->reasonPhrase);
     }
+    this->firstLine = line;
+
+    std::vector<char> hdr;
     if (this->datetime.size() > 0) {
-        appendCstrToVectorChar(recon, "Date: ");
-        appendCstrToVectorChar(recon, this->datetime.data());
+        appendCstrToVectorChar(hdr, "Date: ");
+        appendTwoVectorChars(hdr, this->datetime);
         // if (this->timeZone.size() > 0) {
         //     appendCstrToVectorChar(recon, " ");
         //     appendCstrToVectorChar(recon, this->timeZone.data());
         // }
-        appendCstrToVectorChar(recon, "\r\n");
+        appendCstrToVectorChar(hdr, "\r\n");
     }
     if (this->contentLength > -1) {
-        appendCstrToVectorChar(recon, "Content-Length: ");
+        appendCstrToVectorChar(hdr, "Content-Length: ");
         std::stringstream cl;
         cl << this->contentLength;
-        appendCstrToVectorChar(recon, cl.str().c_str());
-        appendCstrToVectorChar(recon, "\r\n");
+        appendCstrToVectorChar(hdr, cl.str().c_str());
+        appendCstrToVectorChar(hdr, "\r\n");
+    }
+    if (this->transferEncoding.size() > 0) {
+        appendCstrToVectorChar(hdr, "Transfer-Encoding: ");
+        appendTwoVectorChars(hdr, this->transferEncoding);
+        appendCstrToVectorChar(hdr, "\r\n");
     }
     if (this->headerFields.size() > 0) {
         std::stringstream hd;
-        for (header_fields_t::iterator it = this->headerFields.begin();
+        for (mapped_field_t::iterator it = this->headerFields.begin();
         it != this->headerFields.end(); ++it) {
             hd << it->first << ": " << it->second.data() << "\r\n";
         }
-        appendCstrToVectorChar(recon, hd.str().c_str());
+        appendCstrToVectorChar(hdr, hd.str().c_str());
     }
+    appendCstrToVectorChar(hdr, "\r\n");
+    this->header = hdr;
+
+    std::vector<char> recon;
+    appendTwoVectorChars(recon, line);
     appendCstrToVectorChar(recon, "\r\n");
+    appendTwoVectorChars(recon, hdr);
 
     return recon;
+}
+
+bool Response::parseFirstLineDetails() {
+    if (this->firstLine.size() == 0) {
+        return false;
+    }
+    const char * pcur = this->firstLine.data();
+    // Obtain protocal
+    std::vector<char> tempProtocal;
+    while (*pcur != ' ' && *pcur != '\0') {
+        tempProtocal.push_back(*pcur);
+        pcur = pcur + 1;
+    }
+    if (*pcur == '\0') {
+        return false;
+    }
+    skipSpace(&pcur);
+    // Obtain status code
+    std::vector<char> tempStatusCode;
+    while (*pcur != ' ' && *pcur != '\0') {
+        tempStatusCode.push_back(*pcur);
+        pcur = pcur + 1;
+    }
+    if (*pcur == '\0') {
+        return false;
+    }
+    skipSpace(&pcur);
+    // Obtain reason phrase
+    std::vector<char> tempreasonPhrase;
+    while (*pcur != '\0') {
+        tempreasonPhrase.push_back(*pcur);
+        pcur = pcur + 1;
+    }
+    
+    if (tempProtocal.size() > 0) {
+        tempProtocal.push_back('\0');
+        this->protocal = tempProtocal;
+    }
+    if (tempStatusCode.size() > 0) {
+        tempStatusCode.push_back('\0');
+        this->statusCode = tempStatusCode;
+    }
+    if (tempreasonPhrase.size() > 0) {
+        tempreasonPhrase.push_back('\0');
+        this->reasonPhrase = tempreasonPhrase;
+    }
+
+    return true;
 }
 
 bool Response::parseDateTime(std::vector<char> & msg) {

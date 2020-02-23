@@ -185,13 +185,16 @@ bool ServerSocket::socketRecv(std::vector<char> & recvMsg, connect_pair_t & conn
             // recvMsg.push_back(recvBuf[0]);
             for (int i = 0; i < numbytes; i++) {
                 recvMsg.push_back(recvBuf[i]);
+                request.parse(recvMsg);
+                // if (request.getIsCompleted()) {
+                //     break;
+                // }
             }
         }
         else {
             // Do something?
             break;
         }
-        request.parse(recvMsg);
         if (request.getIsCompleted()) {
             break;
         }
