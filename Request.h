@@ -10,7 +10,7 @@
 
 class Request : public HttpParser {
     public:
-    Request();
+    Request(u_long id);
     virtual void clearRequest();
     virtual bool parse(std::vector<char> & msg);
     virtual std::vector<char> & getUri() {return this->uri;}
@@ -30,7 +30,7 @@ class Request : public HttpParser {
     virtual bool parseMethod(std::vector<char> & msg);
 };
 
-Request::Request() : HttpParser(), uri(), hostName(), port(), method() {
+Request::Request(u_long id) : HttpParser(id), uri(), hostName(), port(), method() {
     this->builtInHeaders.insert("Host");
 }
 

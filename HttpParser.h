@@ -16,8 +16,9 @@ typedef std::unordered_map<std::string, std::vector<char> > mapped_field_t;
 typedef std::set<std::string> built_in_headers_t;
 class HttpParser {
     public:
-    HttpParser();
+    HttpParser(u_long id);
     virtual bool parse(std::vector<char> & msg) = 0;
+    virtual const u_long & getId() {return this->id;}
     virtual mapped_field_t & getHeaderFields() {return this->headerFields;}
     virtual bool & getIsCompleted() {return this->isCompleted;}
     virtual std::vector<char> & getProtocal() {return this->protocal;}
@@ -30,6 +31,7 @@ class HttpParser {
     virtual std::vector<char> reconstruct();  // line + header + content
 
     protected:
+    u_long id;
     built_in_headers_t builtInHeaders;
     mapped_field_t headerFields;
     bool isCompleted;
@@ -49,7 +51,7 @@ class HttpParser {
     virtual bool parseTransferEncoding(std::vector<char> & msg);
 };
 
-HttpParser::HttpParser() : headerFields(), isCompleted(false), protocal(), firstLine(), header(), \
+HttpParser::HttpParser(u_long id) : id(id), headerFields(), isCompleted(false), protocal(), firstLine(), header(), \
 content(), contentLength(-1), transferEncoding() {
     this->builtInHeaders.insert("Content-Length");
     this->builtInHeaders.insert("Transfer-Encoding");

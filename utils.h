@@ -115,6 +115,20 @@ datetime_zone_t getDatetimeAndZone(std::vector<char> datetime) {
     return res;
 }
 
+datetime_zone_t getCurrentTime() {
+    time_t rawtime;
+    std::tm * ptm;
+
+    time(&rawtime);
+    ptm = gmtime(&rawtime);
+
+    std::vector<char> timeZone;
+    cstrToVectorChar(timeZone, "GMT");
+    datetime_zone_t datetimeZone(*ptm, timeZone);
+
+    return datetimeZone;
+}
+
 std::vector<char> obtainContent(std::vector<char> & msg) {
     std::vector<char> content;
     const char * pcur = strstr(msg.data(), "\r\n\r\n");

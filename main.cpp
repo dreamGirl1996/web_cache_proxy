@@ -8,10 +8,11 @@
 #include <thread>
 #include <functional>
 
-void runProxy(ServerSocket & serverSocket, connect_pair_t connectPair) {
+void runProxy(const u_long & id, 
+ServerSocket & serverSocket, connect_pair_t connectPair) {
     std::vector<char> requestMsg;
 
-    Request request;
+    Request request(id);
     if (!serverSocket.socketRecv(requestMsg, connectPair, request)) {
         closeSockfd(connectPair.first);
         return;
@@ -33,55 +34,54 @@ void runProxy(ServerSocket & serverSocket, connect_pair_t connectPair) {
     request.getContent() = obtainContent(requestMsg);
     std::vector<char> reconReqMsg = request.reconstruct();
 
-    printALine(32);
-    std::cout << "Request lined header:\n[" << request.reconstructLinedHeaders().data() << "]\n";
-
     ClientSocket clientSocket(hostName, port);
 
+    // printALine(32);
+    // std::cout << "Request lined header:\n[" << request.reconstructLinedHeaders().data() << "]\n";
+    std::stringstream loggedReq;
+    datetime_zone_t datetimeZone = getCurrentTime();
+    loggedReq << request.getId() << ": \"" << method.data() << " " << \
+    request.getUri().data() << " " << request.getProtocal().data() << "\" from " << \
+    clientSocket.getIpAddr().data() << " @ " << std::put_time(&datetimeZone.first, "%c") << "\r\n";
+    std::cout << loggedReq.str();
+
     if (strcmp(method.data(), "CONNECT") == 0) {
-        if (!handleConnect(serverSocket, clientSocket, connectPair)) {
+        if (!handleConnect(id, serverSocket, clientSocket, connectPair)) {
             closeSockfd(connectPair.first);
             return;
         }
     }
     else if (strcmp(method.data(), "GET") == 0) {
-        if (!handleGet(reconReqMsg, serverSocket, clientSocket, connectPair)) {
+        if (!handleGet(request, reconReqMsg, serverSocket, clientSocket, connectPair)) {
             closeSockfd(connectPair.first);
             return;
         }
     }
     else if (strcmp(method.data(), "POST") == 0) {
-        if (!handleGet(reconReqMsg, serverSocket, clientSocket, connectPair)) {
+        if (!handleGet(request, reconReqMsg, serverSocket, clientSocket, connectPair)) {
             closeSockfd(connectPair.first);
             return;
         }
     }
 
     closeSockfd(connectPair.first);
-
 }
 
-
 int main(int argc, char *argv[]) {
-    
     try {
-        // Receive request from user's browser
-        ServerSocket serverSocket;
+        u_long id = 0;
+        ServerSocket serverSocket; // receive request from user's browser
         
         while (1) {
             connect_pair_t connectPair = serverSocket.socketAccept();
-            std::thread th(runProxy, std::ref(serverSocket), connectPair);
+            id++;
+            std::thread th(runProxy, std::ref(id), 
+            std::ref(serverSocket), connectPair);
             th.join();
         }
 
         // connect_pair_t connectPair = serverSocket.socketAccept();
         // runProxy(serverSocket, connectPair);
-
-        // Response response;
-        // std::vector<char> msg;
-        // cstrToVectorChar(msg, "nihao\r\nContent-Length: 30\r\n");
-        // response.parse(msg);
-        // std::cout << "content-length: " << response.getContentLength() << "\n";
 
     }
     catch (std::exception & e) {

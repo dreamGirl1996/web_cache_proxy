@@ -9,9 +9,11 @@
 
 class Response : public HttpParser {
     public:
-    Response();
+    Response(u_long id);
     virtual void clearResponse();
     virtual bool parse(std::vector<char> & msg);
+    virtual std::vector<char> & getStatusCode() {return this->statusCode;}
+    virtual std::vector<char> & getReasonPhrase() {return this->reasonPhrase;}
     virtual std::vector<char> & getDatetimeVectorChar() {return this->datetime;}
     // virtual std::vector<char> & getTimeZone() {return this->timeZone;}
     virtual std::vector<char> reconstructLinedHeaders();
@@ -26,7 +28,7 @@ class Response : public HttpParser {
     virtual bool parseDateTime(std::vector<char> & msg);
 };
 
-Response::Response() : HttpParser(), statusCode(), reasonPhrase(), datetime() {
+Response::Response(u_long id) : HttpParser(id), statusCode(), reasonPhrase(), datetime() {
     this->builtInHeaders.insert("Date");
 }
 

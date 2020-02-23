@@ -20,6 +20,7 @@
 
 class ClientSocket : public Socket {
     public:
+    std::vector<char> & getIpAddr() {return this->ip;}
     std::vector<char> & getHostName() {return this->hostName;}
     std::vector<char> & getPort() {return this->port;}
     int & getWebServerSockfd() {return this->sockfd;}
@@ -29,6 +30,7 @@ class ClientSocket : public Socket {
     virtual bool socketRecv(std::vector<char> & recvMsg, Response & response);
     
     protected:
+    std::vector<char> ip;
     std::vector<char> hostName;
     std::vector<char> port; 
     virtual bool setup();
@@ -88,6 +90,7 @@ bool ClientSocket::setup() {
     }
 
     inet_ntop(p->ai_family, this->getInAddr((struct sockaddr *)p->ai_addr), s, sizeof s);
+    cstrToVectorChar(this->ip, s);
 
     freeaddrinfo(servinfo);
 

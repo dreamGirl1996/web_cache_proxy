@@ -52,7 +52,7 @@ fd_set & socket_set, int & client_fd, int & server_fd) {
     return 1;
 }
 
-bool handleConnect(ServerSocket & serverSocket, ClientSocket & clientSocket, connect_pair_t & connectPair) {
+bool handleConnect(const u_long & id, ServerSocket & serverSocket, ClientSocket & clientSocket, connect_pair_t & connectPair) {
     // std::cout<<"method is connnect now"<<std::endl;
     std::vector<char> responseForConnect;
     cstrToVectorChar(responseForConnect, "HTTP/1.1 200 OK\r\n\r\n");
@@ -80,8 +80,8 @@ bool handleConnect(ServerSocket & serverSocket, ClientSocket & clientSocket, con
             default:
                 //receive from client
                 std::vector<char> transfer;
-                Request request;
-                Response response;
+                Request request(id);
+                Response response(id);
                 int r = tunnelTransfer(transfer, response, socket_set, client_fd, server_fd);
                 if (r == 0) {
                     // break;
