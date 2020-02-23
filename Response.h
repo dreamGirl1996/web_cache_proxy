@@ -16,6 +16,7 @@ class Response : public HttpParser {
     virtual std::vector<char> & getReasonPhrase() {return this->reasonPhrase;}
     virtual std::vector<char> & getDatetimeVectorChar() {return this->datetime;}
     virtual datetime_zone_t & getStoredTime() {return this->storedTime;}
+    virtual void updateStoredTime() {this->storedTime = getCurrentTime();}
     // virtual std::vector<char> & getTimeZone() {return this->timeZone;}
     virtual std::vector<char> reconstructLinedHeaders();
     // virtual std::vector<char> reconstructContent();  // content
