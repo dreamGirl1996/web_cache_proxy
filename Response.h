@@ -15,6 +15,7 @@ class Response : public HttpParser {
     virtual std::vector<char> & getStatusCode() {return this->statusCode;}
     virtual std::vector<char> & getReasonPhrase() {return this->reasonPhrase;}
     virtual std::vector<char> & getDatetimeVectorChar() {return this->datetime;}
+    virtual datetime_zone_t & getStoredTime() {return this->storedTime;}
     // virtual std::vector<char> & getTimeZone() {return this->timeZone;}
     virtual std::vector<char> reconstructLinedHeaders();
     // virtual std::vector<char> reconstructContent();  // content
@@ -23,12 +24,14 @@ class Response : public HttpParser {
     std::vector<char> statusCode;
     std::vector<char> reasonPhrase;
     std::vector<char> datetime;
+    datetime_zone_t storedTime;
     // std::vector<char> timeZone;
     virtual bool parseFirstLineDetails();
     virtual bool parseDateTime(std::vector<char> & msg);
 };
 
-Response::Response(u_long id) : HttpParser(id), statusCode(), reasonPhrase(), datetime() {
+Response::Response(u_long id) : HttpParser(id), statusCode(), reasonPhrase(), datetime(), \
+storedTime() {
     this->builtInHeaders.insert("Date");
 }
 
@@ -78,6 +81,8 @@ void Response::clearResponse() {
     cleanVectorChar(this->statusCode);
     cleanVectorChar(this->reasonPhrase);
     cleanVectorChar(this->datetime);
+    datetime_zone_t new_dtz;
+    this->storedTime = new_dtz;
     // cleanVectorChar(this->timeZone);
 }
 
