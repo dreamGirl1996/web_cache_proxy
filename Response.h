@@ -20,6 +20,7 @@ class Response : public HttpParser {
     // virtual std::vector<char> & getTimeZone() {return this->timeZone;}
     virtual std::vector<char> reconstructLinedHeaders();
     // virtual std::vector<char> reconstructContent();  // content
+    bool iscached;
     
     protected:
     std::vector<char> statusCode;
@@ -31,7 +32,7 @@ class Response : public HttpParser {
     virtual bool parseDateTime(std::vector<char> & msg);
 };
 
-Response::Response(u_long id) : HttpParser(id), statusCode(), reasonPhrase(), datetime(), \
+Response::Response(u_long id) : HttpParser(id), iscached(false), statusCode(), reasonPhrase(), datetime(), \
 storedTime() {
     this->builtInHeaders.insert("Date");
 }
@@ -85,6 +86,7 @@ void Response::clearResponse() {
     datetime_zone_t new_dtz;
     this->storedTime = new_dtz;
     // cleanVectorChar(this->timeZone);
+    this->iscached = false;
 }
 
 std::vector<char> Response::reconstructLinedHeaders() {

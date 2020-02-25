@@ -134,15 +134,15 @@ bool ClientSocket::socketRecv(std::vector<char> & recvMsg, Response & response) 
             for (int i = 0; i < numbytes; i++) {
                 recvMsg.push_back(recvBuf[i]);
                 response.parse(recvMsg);
-                // if (response.getIsCompleted()) {
-                //     break;
-                // }
             }
         }
         else {
             // Do something?
             break;
         }
+        // if (numbytes < MAX_DATA_SIZE) {
+        //     response.getIsCompleted() = true;
+        // }
         if (response.getIsCompleted()) {
             break;
         }

@@ -3,15 +3,12 @@
 
 #include "ServerSocket.h"
 #include "ClientSocket.h"
+#include "Logger.h"
 
-bool handleGet(Request & request, std::vector<char> & requestMsg, 
+bool handleGet(Logger & logger, Request & request, std::vector<char> & requestMsg, 
 ServerSocket & serverSocket, ClientSocket & clientSocket, connect_pair_t & connectPair) {
-    std::stringstream loggedReq;
-    loggedReq << request.getId() << ": Requesting \"" << request.getMethod().data() << " " << \
-    request.getUri().data() << " " << request.getProtocal().data() << "\" from " << \
-    request.getHostName().data() << "\r\n";
-    std::cout << loggedReq.str();
-    
+    logger.sendingRequest(request);
+
     std::vector<char> responseMsg;
     if (!clientSocket.socketSend(requestMsg)) {
         return false;
@@ -32,21 +29,13 @@ ServerSocket & serverSocket, ClientSocket & clientSocket, connect_pair_t & conne
 
     // std::cout << "\nReal Response Header: [\n" << response.getHeader().data() << "]\n"; 
     // std::cout << "\nResponse lined header: [\n" << response.reconstructLinedHeaders().data() << "]\n";
-    std::stringstream loggedresp;
-    loggedresp << response.getId() << ": Responding \"" << response.getProtocal().data() << \
-    " " << response.getStatusCode().data() << " " << response.getReasonPhrase().data() << \
-    "\"" << "\r\n";
-    std::cout << loggedresp.str();
+    logger.sendingResponse(response);
 
     if (!serverSocket.socketSend(reconRespMsg, connectPair)) {
         return false;
     }
 
-    std::stringstream loggedresp_;
-    loggedresp_ << response.getId() << ": Received \"" << response.getProtocal().data() << \
-    " " << response.getStatusCode().data() << " " << response.getReasonPhrase().data() << \
-    "\"" << " from " << request.getHostName().data() << "\r\n";
-    std::cout << loggedresp_.str();
+    logger.receivedResponse(response, request);
 
     return true;
 }

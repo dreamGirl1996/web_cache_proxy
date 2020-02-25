@@ -186,15 +186,15 @@ bool ServerSocket::socketRecv(std::vector<char> & recvMsg, connect_pair_t & conn
             for (int i = 0; i < numbytes; i++) {
                 recvMsg.push_back(recvBuf[i]);
                 request.parse(recvMsg);
-                // if (request.getIsCompleted()) {
-                //     break;
-                // }
             }
         }
         else {
             // Do something?
             break;
         }
+        // if (numbytes < MAX_DATA_SIZE) {
+        //     request.getIsCompleted() = true;
+        // }
         if (request.getIsCompleted()) {
             break;
         }

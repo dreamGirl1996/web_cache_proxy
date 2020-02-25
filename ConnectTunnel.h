@@ -1,13 +1,14 @@
 #ifndef __CONNECTTUNNEL_H__
 #define __CONNECTTUNNEL_H__
 
+#include "Logger.h"
 #include "ServerSocket.h"
 #include "ClientSocket.h"
 
 // -1: error
 //  0: break, or no data
 //  1: continue
-int tunnelTransfer(std::vector<char> & transfer, Response & response, 
+int tunnelTransfer(Logger & logger, std::vector<char> & transfer,
 fd_set & socket_set, int & client_fd, int & server_fd) {
     if (FD_ISSET(client_fd, &socket_set)) {
         try {
@@ -21,8 +22,10 @@ fd_set & socket_set, int & client_fd, int & server_fd) {
             if (recvbyte_num <= 0) {
                 return 0; // break
             }
+            // request.parse(transfer);
+            // std::cout << transfer.data() << "\n";
+            // std::cout << request.getFirstLine().data() << "\n";
             send(server_fd,transfer.data(), recvbyte_num, 0);
-            //response.parse(transfer);
         }
         catch (std::invalid_argument &e) {
             std::cerr << e.what() << std::endl;
@@ -41,8 +44,10 @@ fd_set & socket_set, int & client_fd, int & server_fd) {
             if (recvbyte_num <= 0) {
                 return 0;  // break
             }
+            // response.parse(transfer);
+            // std::cout << transfer.data() << "\n";
+            // std::cout << response.getFirstLine().data() << "\n";
             send(client_fd, transfer.data(), recvbyte_num,0);
-            //response.parse(transfer);
         }
         catch (std::invalid_argument & e) {
             std::cerr << e.what() << std::endl;
@@ -52,7 +57,8 @@ fd_set & socket_set, int & client_fd, int & server_fd) {
     return 1;
 }
 
-bool handleConnect(const u_long & id, ServerSocket & serverSocket, ClientSocket & clientSocket, connect_pair_t & connectPair) {
+bool handleConnect(const u_long & id, Logger & logger, 
+ServerSocket & serverSocket, ClientSocket & clientSocket, connect_pair_t & connectPair) {
     // std::cout<<"method is connnect now"<<std::endl;
     std::vector<char> responseForConnect;
     cstrToVectorChar(responseForConnect, "HTTP/1.1 200 OK\r\n\r\n");
@@ -72,20 +78,21 @@ bool handleConnect(const u_long & id, ServerSocket & serverSocket, ClientSocket 
         timeout.tv_usec = 0;
         switch(select(max_set + 1, &socket_set, nullptr, nullptr, &timeout)) {
             case 0:
-                std::cout << "select nothing" << std::endl;
+                // std::cout << "select nothing" << std::endl;
+                logger.tunnelClosed(id);
                 return true;
             case -1:
-                std::cerr << "wrong select" << std::endl;
+                // std::cerr << "wrong select" << std::endl;
+                logger.tunnelClosed(id);
                 return false;
             default:
                 //receive from client
                 std::vector<char> transfer;
-                Request request(id);
-                Response response(id);
-                int r = tunnelTransfer(transfer, response, socket_set, client_fd, server_fd);
+                int r = tunnelTransfer(logger, transfer, socket_set, client_fd, server_fd);
                 if (r == 0) {
                     // break;
-                    std::cout << "no data\n";
+                    // std::cout << "no data\n";
+                    logger.tunnelClosed(id);
                     return true;
                 }
                 else if (r == -1) {

@@ -18,7 +18,7 @@ class HttpParser {
     public:
     HttpParser(u_long id);
     virtual bool parse(std::vector<char> & msg) = 0;
-    virtual const u_long & getId() {return this->id;}
+    virtual u_long & getId() {return this->id;}
     virtual mapped_field_t & getHeaderFields() {return this->headerFields;}
     virtual bool & getIsCompleted() {return this->isCompleted;}
     virtual std::vector<char> & getProtocal() {return this->protocal;}
@@ -131,6 +131,9 @@ bool HttpParser::parseHeaderFields() {
 }
 
 bool HttpParser::checkIsCompleted(std::vector<char> & msg) {
+    if (this->isCompleted) {
+        return true;
+    }
     // should check content-length first
     if (msg.size() == 0 || this->header.size() == 0) {
         this->isCompleted = false;

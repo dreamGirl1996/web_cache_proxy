@@ -5,6 +5,7 @@
 #include "Response.h"
 #include "ConnectTunnel.h"
 #include "GetHandler.h"
+#include "Logger.h"
 #include <thread>
 #include <functional>
 
@@ -38,27 +39,23 @@ ServerSocket & serverSocket, connect_pair_t connectPair) {
 
     // printALine(32);
     // std::cout << "Request lined header:\n[" << request.reconstructLinedHeaders().data() << "]\n";
-    std::stringstream loggedReq;
-    datetime_zone_t datetimeZone = getCurrentTime();
-    loggedReq << request.getId() << ": \"" << method.data() << " " << \
-    request.getUri().data() << " " << request.getProtocal().data() << "\" from " << \
-    clientSocket.getIpAddr().data() << " @ " << std::put_time(&datetimeZone.first, "%c") << "\r\n";
-    std::cout << loggedReq.str();
+    Logger logger;
+    logger.receivedRequest(request, clientSocket.getIpAddr());
 
     if (strcmp(method.data(), "CONNECT") == 0) {
-        if (!handleConnect(id, serverSocket, clientSocket, connectPair)) {
+        if (!handleConnect(id, logger, serverSocket, clientSocket, connectPair)) {
             closeSockfd(connectPair.first);
             return;
         }
     }
     else if (strcmp(method.data(), "GET") == 0) {
-        if (!handleGet(request, reconReqMsg, serverSocket, clientSocket, connectPair)) {
+        if (!handleGet(logger, request, reconReqMsg, serverSocket, clientSocket, connectPair)) {
             closeSockfd(connectPair.first);
             return;
         }
     }
     else if (strcmp(method.data(), "POST") == 0) {
-        if (!handleGet(request, reconReqMsg, serverSocket, clientSocket, connectPair)) {
+        if (!handleGet(logger, request, reconReqMsg, serverSocket, clientSocket, connectPair)) {
             closeSockfd(connectPair.first);
             return;
         }
