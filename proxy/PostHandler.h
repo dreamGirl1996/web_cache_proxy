@@ -5,14 +5,14 @@
 #include "ClientSocket.h"
 #include "Logger.h"
 
-bool handlePost(Logger & logger, Request & request, std::vector<char> & requestMsg, 
+bool handlePost(Logger & logger, Request & request, 
 ServerSocket & serverSocket, connect_pair_t & connectPair) {
-    logger.sendingRequest(request);
-
     ClientSocket clientSocket(request.getHostName(), request.getPort());
-    std::vector<char> responseMsg;
+    std::vector<char> requestMsg = request.reconstruct();
+    logger.sendingRequest(request);
     clientSocket.socketSend(requestMsg);
 
+    std::vector<char> responseMsg;
     Response response(request.getId());
     clientSocket.socketRecv(responseMsg, response);
 

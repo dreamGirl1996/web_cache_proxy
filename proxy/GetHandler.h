@@ -4,34 +4,35 @@
 #include "ServerSocket.h"
 #include "ClientSocket.h"
 #include "Logger.h"
+#include "Cache.h"
 
-bool handleGet(Logger & logger, Request & request, std::vector<char> & requestMsg, 
+bool handleGet(cache & ch, Logger & logger, Request & request, 
 ServerSocket & serverSocket, connect_pair_t & connectPair) {
-    logger.sendingRequest(request);
+    ch.check_cache(request, request.getId(), logger, connectPair);
+    
+    // ClientSocket clientSocket(request.getHostName(), request.getPort());
+    // std::vector<char> requestMsg = request.reconstruct();
+    // logger.sendingRequest(request);
+    // clientSocket.socketSend(requestMsg);
 
-    ClientSocket clientSocket(request.getHostName(), request.getPort());
-    std::vector<char> responseMsg;
-    clientSocket.socketSend(requestMsg);
+    // std::vector<char> responseMsg;
+    // Response response(request.getId());
+    // clientSocket.socketRecv(responseMsg, response);
 
-    Response response(request.getId());
-    clientSocket.socketRecv(responseMsg, response);
+    // if (responseMsg.size() == 0) {
+    //     closeSockfd(connectPair.first);
+    //     return false;
+    // } // commented when responseMst resized in client socketRecv
 
-    if (responseMsg.size() == 0) {
-        closeSockfd(connectPair.first);
-        return false;
-    } // commented when responseMst resized in client socketRecv
+    // cleanVectorChar(response.getContent());
+    // response.getContent() = obtainContent(responseMsg);
+    // std::vector<char> reconRespMsg = response.reconstruct();
 
-    cleanVectorChar(response.getContent());
-    response.getContent() = obtainContent(responseMsg);
-    std::vector<char> reconRespMsg = response.reconstruct();
+    // logger.sendingResponse(response);
 
-    // std::cout << "\nReal Response Header: [\n" << response.getHeader().data() << "]\n"; 
-    // std::cout << "\nResponse lined header: [\n" << response.reconstructLinedHeaders().data() << "]\n";
-    logger.sendingResponse(response);
+    // serverSocket.socketSend(reconRespMsg, connectPair);
 
-    serverSocket.socketSend(reconRespMsg, connectPair);
-
-    logger.receivedResponse(response, request);
+    // logger.receivedResponse(response, request);
 
     return true;
 }

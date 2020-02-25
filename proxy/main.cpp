@@ -7,10 +7,11 @@
 #include "GetHandler.h"
 #include "PostHandler.h"
 #include "Logger.h"
+#include "Cache.h"
 #include <thread>
 #include <functional>
 
-void runProxy(const u_long & id, Logger & logger,
+void runProxy(cache & ch, const u_long & id, Logger & logger,
 ServerSocket & serverSocket, connect_pair_t connectPair) {
     std::vector<char> requestMsg;
 
@@ -33,7 +34,7 @@ ServerSocket & serverSocket, connect_pair_t connectPair) {
     }
     cleanVectorChar(request.getContent());
     request.getContent() = obtainContent(requestMsg);
-    std::vector<char> reconReqMsg = request.reconstruct();
+    // std::vector<char> reconReqMsg = request.reconstruct();
 
     logger.receivedRequest(request, serverSocket.getIpAddr());
 
@@ -44,10 +45,10 @@ ServerSocket & serverSocket, connect_pair_t connectPair) {
         }
     }
     else if (strcmp(method.data(), "GET") == 0) {
-        handleGet(logger, request, reconReqMsg, serverSocket, connectPair);
+        handleGet(ch, logger, request, serverSocket, connectPair);
     }
     else if (strcmp(method.data(), "POST") == 0) {
-        handlePost(logger, request, reconReqMsg, serverSocket, connectPair);
+        handlePost(logger, request, serverSocket, connectPair);
     }
 
     closeSockfd(connectPair.first);
@@ -58,11 +59,12 @@ int main(int argc, char *argv[]) {
         u_long id = 0;
         Logger logger;
         ServerSocket serverSocket; // receive request from user's browser
+        cache ch(200, serverSocket);
         
         while (1) {
             connect_pair_t connectPair = serverSocket.socketAccept();
             id++;
-            std::thread th(runProxy, std::ref(id), std::ref(logger),
+            std::thread th(runProxy, std::ref(ch), std::ref(id), std::ref(logger),
             std::ref(serverSocket), connectPair);
             th.join();
         }
