@@ -5,6 +5,7 @@
 #include "Response.h"
 #include "ConnectTunnel.h"
 #include "GetHandler.h"
+#include "PostHandler.h"
 #include "Logger.h"
 #include <thread>
 #include <functional>
@@ -25,7 +26,6 @@ ServerSocket & serverSocket, connect_pair_t connectPair) {
 
     std::vector<char> hostName = request.getHostName();
     std::vector<char> method = request.getMethod();
-    std::vector<char> port = request.getPort();
 
     if (hostName.size() == 0) {
         closeSockfd(connectPair.first);
@@ -35,29 +35,19 @@ ServerSocket & serverSocket, connect_pair_t connectPair) {
     request.getContent() = obtainContent(requestMsg);
     std::vector<char> reconReqMsg = request.reconstruct();
 
-    ClientSocket clientSocket(hostName, port);
-
-    // printALine(32);
-    // std::cout << "Request lined header:\n[" << request.reconstructLinedHeaders().data() << "]\n";
-    logger.receivedRequest(request, clientSocket.getIpAddr());
+    logger.receivedRequest(request, serverSocket.getIpAddr());
 
     if (strcmp(method.data(), "CONNECT") == 0) {
-        if (!handleConnect(id, logger, serverSocket, clientSocket, connectPair)) {
+        if (!handleConnect(id, logger, request, serverSocket, connectPair)) {
             closeSockfd(connectPair.first);
             return;
         }
     }
     else if (strcmp(method.data(), "GET") == 0) {
-        if (!handleGet(logger, request, reconReqMsg, serverSocket, clientSocket, connectPair)) {
-            closeSockfd(connectPair.first);
-            return;
-        }
+        handleGet(logger, request, reconReqMsg, serverSocket, connectPair);
     }
     else if (strcmp(method.data(), "POST") == 0) {
-        if (!handleGet(logger, request, reconReqMsg, serverSocket, clientSocket, connectPair)) {
-            closeSockfd(connectPair.first);
-            return;
-        }
+        handlePost(logger, request, reconReqMsg, serverSocket, connectPair);
     }
 
     closeSockfd(connectPair.first);
@@ -76,10 +66,6 @@ int main(int argc, char *argv[]) {
             std::ref(serverSocket), connectPair);
             th.join();
         }
-
-        // connect_pair_t connectPair = serverSocket.socketAccept();
-        // runProxy(serverSocket, connectPair);
-
     }
     catch (std::exception & e) {
         std::cerr << e.what() << "\n";

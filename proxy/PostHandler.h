@@ -1,11 +1,11 @@
-#ifndef __GETHANDLER_H__
-#define __GETHANDLER_H__
+#ifndef __POSTHANDLER_H__
+#define __POSTHANDLER_H__
 
 #include "ServerSocket.h"
 #include "ClientSocket.h"
 #include "Logger.h"
 
-bool handleGet(Logger & logger, Request & request, std::vector<char> & requestMsg, 
+bool handlePost(Logger & logger, Request & request, std::vector<char> & requestMsg, 
 ServerSocket & serverSocket, connect_pair_t & connectPair) {
     logger.sendingRequest(request);
 
@@ -25,8 +25,6 @@ ServerSocket & serverSocket, connect_pair_t & connectPair) {
     response.getContent() = obtainContent(responseMsg);
     std::vector<char> reconRespMsg = response.reconstruct();
 
-    // std::cout << "\nReal Response Header: [\n" << response.getHeader().data() << "]\n"; 
-    // std::cout << "\nResponse lined header: [\n" << response.reconstructLinedHeaders().data() << "]\n";
     logger.sendingResponse(response);
 
     serverSocket.socketSend(reconRespMsg, connectPair);

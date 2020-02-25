@@ -20,7 +20,7 @@
 
 class ClientSocket : public Socket {
     public:
-    std::vector<char> & getIpAddr() {return this->ip;}
+    // std::vector<char> & getIpAddr() {return this->ip;}
     std::vector<char> & getHostName() {return this->hostName;}
     std::vector<char> & getPort() {return this->port;}
     int & getWebServerSockfd() {return this->sockfd;}
@@ -30,7 +30,7 @@ class ClientSocket : public Socket {
     virtual bool socketRecv(std::vector<char> & recvMsg, Response & response);
     
     protected:
-    std::vector<char> ip;
+    // std::vector<char> ip;
     std::vector<char> hostName;
     std::vector<char> port; 
     virtual bool setup();
@@ -65,7 +65,8 @@ bool ClientSocket::setup() {
         std::cerr << "proxy ClientSocket getaddrinfo: " << gai_strerror(rv) << "\n";
         std::cerr << "hostName: " << this->hostName.data() << "\n";
         std::cerr << "port: " << this->port.data() << "\n";
-        return false;
+        throw std::invalid_argument("Error in setup!");
+        // return false;
     }
 
     // loop through all the results and connect to the first we can
@@ -83,14 +84,16 @@ bool ClientSocket::setup() {
     }
 
     if (p == NULL) {
+        this->closeSocket();
         std::cerr << "proxy ClientSocket: failed to connect" << "\n";
         std::cerr << "hostName: " << this->hostName.data() << "\n";
         std::cerr << "port: " << this->port.data() << "\n";
-        return false;
+        throw std::invalid_argument("Error in setup!");
+        // return false;
     }
 
     inet_ntop(p->ai_family, this->getInAddr((struct sockaddr *)p->ai_addr), s, sizeof s);
-    cstrToVectorChar(this->ip, s);
+    // cstrToVectorChar(this->ip, s);
 
     freeaddrinfo(servinfo);
 
@@ -101,32 +104,24 @@ bool ClientSocket::setup() {
 // to the server and receive response from it
 bool ClientSocket::socketSend(std::vector<char> & sendMsg) {
     if ((send(this->sockfd, sendMsg.data(), sendMsg.size(), 0)) == -1) {
+        this->closeSocket();
         std::perror("send");
-        return false;
+        throw std::invalid_argument("Error in send!");
+        // return false;
     }
 
     return true;
 }
 
-// Begin citation
-// https://www.binarytides.com/receive-full-data-with-recv-socket-function-in-c/
 bool ClientSocket::socketRecv(std::vector<char> & recvMsg, Response & response) {
     int numbytes;
     char recvBuf[MAX_DATA_SIZE];
-
-    // struct timeval begin, now;
-    // double timeDiff;
-    // gettimeofday(&begin, NULL);
 
     struct timeval tv;
     tv.tv_sec = CLIENT_RECV_TIME_OUT;
     tv.tv_usec = 0;
     setsockopt(this->sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
     while (1) {
-        // gettimeofday(&now, NULL);
-        // timeDiff = (now.tv_sec - begin.tv_sec) + 1e-6 * (now.tv_usec - begin.tv_usec);
-        // if (timeDiff > CLIENT_RECV_TIME_OUT ) {return false;}
-        
         memset(recvBuf, 0, sizeof recvBuf);
         // MSG_DONTWAIT or 0
         if ((numbytes = recv(this->sockfd, recvBuf, MAX_DATA_SIZE, 0)) > 0) {
@@ -155,7 +150,6 @@ bool ClientSocket::socketRecv(std::vector<char> & recvMsg, Response & response) 
 // End of citation
 
 void ClientSocket::closeSocket() {
-    // if (this->sockfd != -1) {close(this->sockfd);}
     closeSockfd(this->sockfd);
 }
 

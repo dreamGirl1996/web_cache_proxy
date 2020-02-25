@@ -39,11 +39,13 @@ class ServerSocket : public Socket {
     virtual ~ServerSocket();
     // std::queue<int> & get_new_fd_queue();
     // connect_pair_queue_t & getConnectPairQueue();
+    std::vector<char> & getIpAddr() {return this->ip;}
     virtual connect_pair_t socketAccept();
     virtual bool socketRecv(std::vector<char> & recvMsg, connect_pair_t & connectPair, Request & request);
     virtual bool socketSend(std::vector<char> & sendMsg, connect_pair_t & connectPair);
 
     protected:
+    std::vector<char> ip;
     virtual bool setup();
     virtual void closeSocket();
 
@@ -51,7 +53,7 @@ class ServerSocket : public Socket {
     int sockfd;  // listen on sock_fd, new connection on new_fd
 };
 
-ServerSocket::ServerSocket() : Socket(), sockfd(-1) {
+ServerSocket::ServerSocket() : Socket(), ip(), sockfd(-1) {
     if(!this->setup()) {
         std::stringstream ess;
         ess << __func__;
@@ -79,7 +81,8 @@ bool ServerSocket::setup() {
 
     if ((rv = getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0) {
         std::cerr << "proxy ServerSocket: getaddrinfo " << gai_strerror(rv) << "\n";
-        return false;
+        throw std::invalid_argument("Error in setup!");
+        // return false;
     }
 
     // loop through all the results and bind to the first we can
@@ -105,21 +108,27 @@ bool ServerSocket::setup() {
     freeaddrinfo(servinfo); // all done with this structure
 
     if (p == NULL)  {
+        this->closeSocket();
         std::cerr << "proxy ServerSocket: failed to bind\n";
-        return false;
+        throw std::invalid_argument("Error in setup!");
+        // return false;
     }
 
     if (listen(this->sockfd, BACKLOG) == -1) {
+        this->closeSocket();
         std::perror("proxy ServerSocket: listen");
-        return false;
+        throw std::invalid_argument("Error in setup!");
+        // return false;
     }
     
     sa.sa_handler = sigchld_handler; // reap all dead processes
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
     if (sigaction(SIGCHLD, &sa, NULL) == -1) {
+        this->closeSocket();
         std::perror("proxy ServerSocket: sigaction");
-        return false;
+        throw std::invalid_argument("Error in setup!");
+        // return false;
     }
 
     return true;
@@ -141,6 +150,11 @@ connect_pair_t ServerSocket::socketAccept() {
         else {
             connect_pair_t connectPair(new_fd, their_addr);
             // this->connectPairQueue.push(connectPair);
+            char s[INET6_ADDRSTRLEN];
+            inet_ntop(connectPair.second.ss_family,
+            this->getInAddr((struct sockaddr *)&connectPair.second), s, sizeof s);
+            cstrToVectorChar(this->ip, s);
+
             return connectPair;
         }
     }
@@ -151,34 +165,23 @@ connect_pair_t ServerSocket::socketAccept() {
     // return new_fd;
 }
 
-// Begin citation
-// https://www.binarytides.com/receive-full-data-with-recv-socket-function-in-c/
 bool ServerSocket::socketRecv(std::vector<char> & recvMsg, connect_pair_t & connectPair, Request & request) {
     if (connectPair.first == -1) {
+        this->closeSocket();
+        closeSockfd(connectPair.first);
         std::cerr << "Invalid new_fd in " << __func__ << "\n";
-        return false;
+        throw std::invalid_argument("Error in receive!");
+        // return false;
     }
-    char s[INET6_ADDRSTRLEN];
-    inet_ntop(connectPair.second.ss_family,
-        this->getInAddr((struct sockaddr *)&connectPair.second), s, sizeof s);
-
-    // close(sockfd); // child doesn't need the listener
+    
     int numbytes;
     char recvBuf[MAX_DATA_SIZE];
-
-    // struct timeval begin, now;
-    // double timeDiff;
-    // gettimeofday(&begin, NULL);
 
     struct timeval tv;
     tv.tv_sec = SERVER_RECV_TIME_OUT;
     tv.tv_usec = 0;
     setsockopt(connectPair.first, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
     while (1) { 
-        // gettimeofday(&now, NULL);
-        // timeDiff = (now.tv_sec - begin.tv_sec) + 1e-6 * (now.tv_usec - begin.tv_usec);
-        // if (timeDiff > SERVER_RECV_TIME_OUT) {return false;}
-        
         memset(recvBuf, 0, sizeof recvBuf);
         // MSG_DONTWAIT or 0
         if ((numbytes = recv(connectPair.first, recvBuf, MAX_DATA_SIZE, 0)) > 0) {
@@ -206,16 +209,15 @@ bool ServerSocket::socketRecv(std::vector<char> & recvMsg, connect_pair_t & conn
 
     return true;
 }
-// End of citation
 
 bool ServerSocket::socketSend(std::vector<char> & sendMsg, connect_pair_t & connectPair) {
     if (connectPair.first == -1) {
+        this->closeSocket();
+        closeSockfd(connectPair.first);
         std::cerr << "Invalid new_fd in " << __func__ << "\n";
-        return false;
+        throw std::invalid_argument("Error in send!");
+        // return false;
     }
-    char s[INET6_ADDRSTRLEN];
-    inet_ntop(connectPair.second.ss_family,
-        this->getInAddr((struct sockaddr *)&connectPair.second), s, sizeof s);
 
     // close(sockfd); // child doesn't need the listener
 
@@ -228,8 +230,6 @@ bool ServerSocket::socketSend(std::vector<char> & sendMsg, connect_pair_t & conn
 }
 
 void ServerSocket::closeSocket() {
-    // if (this->sockfd != -1) {close(this->sockfd);}
-    // if (this->new_fd != -1) {close(this->new_fd);}
     closeSockfd(this->sockfd);
 }
 
