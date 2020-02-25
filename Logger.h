@@ -9,7 +9,9 @@
 class Logger {
     public:
     Logger();
-    virtual ~Logger();
+    virtual void openLogger(bool clear);
+    virtual void closeLogger();
+    virtual void write(std::string msg);
     virtual void receivedRequest(Request & request, const std::vector<char> & ip);
     virtual void sendingRequest(Request & request);
     virtual void sendingResponse(Response & response);
@@ -21,16 +23,39 @@ class Logger {
 };
 
 Logger::Logger() {
+    this->openLogger(false);
+    this->closeLogger();
+}
+
+void Logger::openLogger(bool app=true) {
     try {
-        log.open("./proxy.log");
+        if (app) {
+            log.open("./proxy.log", std::ios::app);
+        }
+        else {
+            log.open("./proxy.log");
+        }
     }
     catch (std::exception & e) {
         throw std::invalid_argument(e.what());
     }
 }
 
-Logger::~Logger() {
-    log.close();
+void Logger::closeLogger() {
+    try {
+        log.close();
+    }
+    catch (std::exception & e) {
+        throw std::invalid_argument(e.what());
+    }
+}
+
+void Logger::write(std::string msg) {
+    std::lock_guard<std::mutex> lock(mtx);
+    this->openLogger();
+    this->log << msg;
+    std::cout << msg;
+    this->closeLogger();
 }
 
 void Logger::receivedRequest(Request & request, const std::vector<char> & ip) {
@@ -40,7 +65,10 @@ void Logger::receivedRequest(Request & request, const std::vector<char> & ip) {
     request.getUri().data() << " " << request.getProtocal().data() << "\" from " << \
     ip.data() << " @ " << std::put_time(&datetimeZone.first, "%c") << "\r\n";
     std::lock_guard<std::mutex> lock(mtx);
+    this->openLogger();
+    this->log << loggedReq.str();
     std::cout << loggedReq.str();
+    this->closeLogger();
 }
 
 void Logger::sendingRequest(Request & request) {
@@ -49,7 +77,10 @@ void Logger::sendingRequest(Request & request) {
     request.getUri().data() << " " << request.getProtocal().data() << "\" from " << \
     request.getHostName().data() << "\r\n";
     std::lock_guard<std::mutex> lock(mtx);
+    this->openLogger();
+    this->log << loggedReq.str();
     std::cout << loggedReq.str();
+    this->closeLogger();
 }
 
 void Logger::sendingResponse(Response & response) {
@@ -58,7 +89,10 @@ void Logger::sendingResponse(Response & response) {
     " " << response.getStatusCode().data() << " " << response.getReasonPhrase().data() << \
     "\"" << "\r\n";
     std::lock_guard<std::mutex> lock(mtx);
+    this->openLogger();
+    this->log << loggedresp.str();
     std::cout << loggedresp.str();
+    this->closeLogger();
 }
 
 void Logger::receivedResponse(Response & response, Request & request) {
@@ -67,14 +101,20 @@ void Logger::receivedResponse(Response & response, Request & request) {
     " " << response.getStatusCode().data() << " " << response.getReasonPhrase().data() << \
     "\"" << " from " << request.getHostName().data() << "\r\n";
     std::lock_guard<std::mutex> lock(mtx);
+    this->openLogger();
+    this->log << loggedresp.str();
     std::cout << loggedresp.str();
+    this->closeLogger();
 }
 
 void Logger::tunnelClosed(const u_long & id) {
     std::stringstream loggedresp;
     loggedresp << id << ": Tunnel closed\r\n";
     std::lock_guard<std::mutex> lock(mtx);
+    this->openLogger();
+    this->log << loggedresp.str();
     std::cout << loggedresp.str();
+    this->closeLogger();
 }
 
 #endif

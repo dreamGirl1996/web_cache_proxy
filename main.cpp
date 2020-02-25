@@ -9,7 +9,7 @@
 #include <thread>
 #include <functional>
 
-void runProxy(const u_long & id, 
+void runProxy(const u_long & id, Logger & logger,
 ServerSocket & serverSocket, connect_pair_t connectPair) {
     std::vector<char> requestMsg;
 
@@ -39,7 +39,6 @@ ServerSocket & serverSocket, connect_pair_t connectPair) {
 
     // printALine(32);
     // std::cout << "Request lined header:\n[" << request.reconstructLinedHeaders().data() << "]\n";
-    Logger logger;
     logger.receivedRequest(request, clientSocket.getIpAddr());
 
     if (strcmp(method.data(), "CONNECT") == 0) {
@@ -67,12 +66,13 @@ ServerSocket & serverSocket, connect_pair_t connectPair) {
 int main(int argc, char *argv[]) {
     try {
         u_long id = 0;
+        Logger logger;
         ServerSocket serverSocket; // receive request from user's browser
         
         while (1) {
             connect_pair_t connectPair = serverSocket.socketAccept();
             id++;
-            std::thread th(runProxy, std::ref(id), 
+            std::thread th(runProxy, std::ref(id), std::ref(logger),
             std::ref(serverSocket), connectPair);
             th.join();
         }
