@@ -17,6 +17,13 @@ class Logger {
     virtual void receivedResponse(Response & response, Request & request);
     virtual void sendingResponse(Response & response);
     virtual void tunnelClosed(const u_long & id);
+    virtual void notInCache(const u_long & id);
+    virtual void inCacheExpiredAtX(const u_long & id, time_t & expireTime);
+    virtual void inCacheReqiresValidation(const u_long & id);
+    virtual void inCacheValid(const u_long & id);
+    virtual void notCacheable(const u_long & id, const std::string & reason);
+    virtual void cachedExpiresAtX(const u_long & id, time_t & expireTime);
+    virtual void cachedRequiresRevalidation(const u_long & id);
 
     protected:
     std::ofstream log;
@@ -64,11 +71,7 @@ void Logger::receivedRequest(Request & request, const std::vector<char> & ip) {
     loggedReq << request.getId() << ": \"" << request.getMethod().data() << " " << \
     request.getUri().data() << " " << request.getProtocal().data() << "\" from " << \
     ip.data() << " @ " << std::put_time(&datetimeZone.first, "%c") << "\r\n";
-    std::lock_guard<std::mutex> lock(mtx);
-    this->openLogger();
-    this->log << loggedReq.str();
-    std::cout << loggedReq.str();
-    this->closeLogger();
+    this->write(loggedReq.str());
 }
 
 void Logger::sendingRequest(Request & request) {
@@ -76,11 +79,7 @@ void Logger::sendingRequest(Request & request) {
     loggedReq << request.getId() << ": Requesting \"" << request.getMethod().data() << " " << \
     request.getUri().data() << " " << request.getProtocal().data() << "\" from " << \
     request.getHostName().data() << "\r\n";
-    std::lock_guard<std::mutex> lock(mtx);
-    this->openLogger();
-    this->log << loggedReq.str();
-    std::cout << loggedReq.str();
-    this->closeLogger();
+    this->write(loggedReq.str());
 }
 
 void Logger::receivedResponse(Response & response, Request & request) {
@@ -88,11 +87,7 @@ void Logger::receivedResponse(Response & response, Request & request) {
     loggedresp << response.getId() << ": Received \"" << response.getProtocal().data() << \
     " " << response.getStatusCode().data() << " " << response.getReasonPhrase().data() << \
     "\"" << " from " << request.getHostName().data() << "\r\n";
-    std::lock_guard<std::mutex> lock(mtx);
-    this->openLogger();
-    this->log << loggedresp.str();
-    std::cout << loggedresp.str();
-    this->closeLogger();
+    this->write(loggedresp.str());
 }
 
 void Logger::sendingResponse(Response & response) {
@@ -100,21 +95,57 @@ void Logger::sendingResponse(Response & response) {
     loggedresp << response.getId() << ": Responding \"" << response.getProtocal().data() << \
     " " << response.getStatusCode().data() << " " << response.getReasonPhrase().data() << \
     "\"" << "\r\n";
-    std::lock_guard<std::mutex> lock(mtx);
-    this->openLogger();
-    this->log << loggedresp.str();
-    std::cout << loggedresp.str();
-    this->closeLogger();
+    this->write(loggedresp.str());
 }
 
 void Logger::tunnelClosed(const u_long & id) {
     std::stringstream loggedresp;
     loggedresp << id << ": Tunnel closed\r\n";
-    std::lock_guard<std::mutex> lock(mtx);
-    this->openLogger();
-    this->log << loggedresp.str();
-    std::cout << loggedresp.str();
-    this->closeLogger();
+    this->write(loggedresp.str());
+}
+
+void Logger::notInCache(const u_long & id) {
+    std::stringstream ssch;
+    ssch << id << ": not in cache\r\n";
+    this->write(ssch.str());
+}
+
+void Logger::inCacheExpiredAtX(const u_long & id, time_t & expireTime) {
+    std::string expire = asctime(gmtime(&expireTime));
+    std::stringstream ssch;
+    ssch << id << ": in cache, but expired at " << expire;
+    this->write(ssch.str());
+}
+
+void Logger::inCacheReqiresValidation(const u_long & id) {
+    std::stringstream ssch;
+    ssch << id << ": in cache, requires validation\r\n";
+    this->write(ssch.str());
+}
+
+void Logger::inCacheValid(const u_long & id) {
+    std::stringstream ssch;
+    ssch << id << ": in cache, valid\r\n";
+    this->write(ssch.str());
+}
+
+void Logger::notCacheable(const u_long & id, const std::string & reason) {
+    std::stringstream ssch;
+    ssch << id << ": not cacheable because " << reason << "\r\n";
+    this->write(ssch.str());
+}
+
+void Logger::cachedExpiresAtX(const u_long & id, time_t & expireTime) {
+    std::string expire = asctime(gmtime(&expireTime));
+    std::stringstream ssch;
+    ssch << id << ": cached, expires at " << expire;
+    this->write(ssch.str());
+}
+
+void Logger::cachedRequiresRevalidation(const u_long & id) {
+    std::stringstream ssch;
+    ssch << id << ": cached, but requires re-validation\r\n";
+    this->write(ssch.str());
 }
 
 #endif
