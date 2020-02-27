@@ -24,7 +24,7 @@ class Logger {
     virtual void write(std::string msg);
     virtual void receivedRequest(Request & request, const std::vector<char> & ip);
     virtual void sendingRequest(Request & request);
-    virtual void receivedResponse(Response & response, Request & request);
+    virtual void receivedResponse(Response & response, Request & request, const long id=-1);
     virtual void sendingResponse(Response & response, const long id=-1);
     virtual void tunnelClosed(const u_long & id);
     virtual void notInCache(const u_long & id);
@@ -92,9 +92,9 @@ void Logger::sendingRequest(Request & request) {
     this->write(loggedReq.str());
 }
 
-void Logger::receivedResponse(Response & response, Request & request) {
+void Logger::receivedResponse(Response & response, Request & request, const long id=-1) {
     std::stringstream loggedresp;
-    loggedresp << response.getId() << ": Received \"" << response.getProtocal().data() << \
+    loggedresp << selectId(response.getId(), id) << ": Received \"" << response.getProtocal().data() << \
     " " << response.getStatusCode().data() << " " << response.getReasonPhrase().data() << \
     "\"" << " from " << request.getHostName().data() << "\r\n";
     this->write(loggedresp.str());

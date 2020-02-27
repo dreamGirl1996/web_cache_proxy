@@ -123,20 +123,23 @@ int cache::revalidate_header(Request & request, Response & response, int id, Log
     } // commented when responseMst resized in client socketRecv
     cleanVectorChar(NewResponse.getContent());
     NewResponse.getContent() = obtainContent(responseMsgNew);
-    file.receivedResponse(NewResponse, request);//TODO:Maybe has mistake
+    file.receivedResponse(NewResponse, request, id);//TODO:Maybe has mistake
 
     //response status code is 304 then just return old response and update cache
     if(strcmp(NewResponse.getStatusCode().data(), "304") == 0){
         std::string url = request.getUri().data();
         datetime_zone_t currTime = getCurrentTime();
         put_cache(url, response, currTime);//put old response
-        std::vector<char> reconRespMsg =response.reconstruct();
+        std::vector<char> reconRespMsg = response.reconstruct();
         serverSocket.socketSend(reconRespMsg, connectPair);//send to browser
         //TODO:MAYBE NOT CORRECT
         file.sendingResponse(NewResponse, (long) id);
         return 0;
     }
 
+    // check is 200?
+
+    // not 304, update cache
     mapped_field_t response_header_map_new = response.getHeaderFields();
     auto it_response_new = response_header_map_new.find("Cache-Control");
     std::string response_cache_control_material;
@@ -148,7 +151,7 @@ int cache::revalidate_header(Request & request, Response & response, int id, Log
         strcmp(NewResponse.getStatusCode().data(), "200") == 0) {
             //将server response 返回 browser,且不放进cache
             std::vector<char> reconRespMsg = NewResponse.reconstruct();
-            file.receivedResponse(NewResponse, request);
+            file.receivedResponse(NewResponse, request, id);
             file.notCacheable(id, "\"no-store\" or \"private\"");
             serverSocket.socketSend(reconRespMsg, connectPair);//send to browser
             file.sendingResponse(NewResponse, (long) id);
@@ -159,7 +162,7 @@ int cache::revalidate_header(Request & request, Response & response, int id, Log
             datetime_zone_t currTime = getCurrentTime();
             put_cache(url, NewResponse, currTime);
 
-            file.receivedResponse(response, request);
+            file.receivedResponse(response, request, id);
             //if new response's head has no-cache
             if(response_cache_control_material.find("no-cache")!=std::string::npos ||
                response_cache_control_material.find("max-age=0") != std::string::npos){
@@ -215,7 +218,7 @@ int cache::revalidate_header(Request & request, Response & response, int id, Log
     else {
         //no cache control in new response
         std::vector<char> reconRespMsg = response.reconstruct();
-        file.receivedResponse(response, request);
+        file.receivedResponse(response, request, id);
         serverSocket.socketSend(reconRespMsg, connectPair);
         file.sendingResponse(response, (long) id);
         return 3;
@@ -248,6 +251,16 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
         cleanVectorChar(response.getContent());
         response.getContent() = obtainContent(responseMsg);//get response content
 
+        if (strcmp(response.getStatusCode().data(), "200") != 0 && 
+        strcmp(response.getStatusCode().data(), "304") != 0) {
+            // not cacheable
+            std::vector<char> reconRespMsg = response.reconstruct();
+            file.receivedResponse(response, request, id);
+            file.notCacheable(id, "not \"200\" nor \"304\"");
+            serverSocket.socketSend(reconRespMsg, connectPair);
+            return;  // no need to check cache
+        }
+
         // check cache control material for response
         mapped_field_t response_header_map = response.getHeaderFields();
         auto it_response = response_header_map.find("Cache-Control");
@@ -256,11 +269,10 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
             response_cache_control_material = it_response->second.data();
             //if response(server) 200 && (no-store || private) -> not cacheable -> send response to browser directly
             if ((response_cache_control_material.find("no-store") != std::string::npos || 
-            response_cache_control_material.find("private")!=std::string::npos) &&
-            strcmp(response.getStatusCode().data(), "200") == 0) {
+            response_cache_control_material.find("private")!=std::string::npos)) {
                 //将server response 返回 browser,且不放进cache
                 std::vector<char> reconRespMsg = response.reconstruct();
-                file.receivedResponse(response, request);
+                file.receivedResponse(response, request, id);
                 file.notCacheable(id, "\"no-store\" or \"private\"");
                 serverSocket.socketSend(reconRespMsg, connectPair);//send to browser
                 file.sendingResponse(response, (long) id);
@@ -270,7 +282,7 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
 
         //put response(from server) to cache
         put_cache(url, response, currTime);
-        file.receivedResponse(response, request);
+        file.receivedResponse(response, request, id);
 
         ///////////////////////////////////
         //if new response's head has no-cache
@@ -458,7 +470,7 @@ void cache::check_cache(Request & request, int id, Logger & file, connect_pair_t
             cleanVectorChar(response.getContent());
             response.getContent() = obtainContent(responseMsg);
             
-            file.receivedResponse(response, request);
+            file.receivedResponse(response, request, id);
             file.notCacheable(id, "\"no-store\" or \"private\"");
             std::vector<char> reconRespMsg = response.reconstruct();
 
