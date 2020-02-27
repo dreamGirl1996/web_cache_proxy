@@ -1,0 +1,22 @@
+1. If response that server sent status code is not 200, we don't deal with this response
+
+2.If we input a wrong website that sever can't find website address, sever will return 404
+
+3. Proxy may receive some evil requests or responses.
+
+4. We can't guarantee memory won't leak because of multiple threads
+
+5.Browser has local cache, so browser still can store and send revalidate request
+
+6. For cache situation, we need to deal with request/response header that don't have cache-control tag, expire tag. In this case, we cacluate the expire time manually to judge whether it is refresh
+
+7. Time value is UTC
+
+8. The cache size is 200
+
+9. Until proxy received all the response/request, it will send to browser or server. Thus, the speed of cache is slow when website has lots of material
+
+10.No cacheable is due to several reasons: private and no-store
+
+11. If header contains max_age=0 or no-cache, we need revalidate from server
+ 

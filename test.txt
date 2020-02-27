@@ -1,0 +1,23 @@
+1. Testing get method & cache
+http://www.man7.org/linux/man-pages/man2/recv.2.html HTTP/1.1
+http://people.duke.edu/~bmr23/ece568/class.html
+http://www.4399.com
+http://fanyi.youdao.com
+
+2. Tesing post
+homework 1's website
+
+3. Testing connect
+https://stackoverflow.com
+https://www.google.com
+
+4. 404, cannot find server
+http://www.abcde.com
+
+5. test max-age=0 and revalidation
+http://www.cplusplus.com
+
+6. testing the speed of proxy
+http://www.4399.com
+
+
