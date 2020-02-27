@@ -92,7 +92,7 @@ void Logger::sendingRequest(Request & request) {
     this->write(loggedReq.str());
 }
 
-void Logger::receivedResponse(Response & response, Request & request, const long id=-1) {
+void Logger::receivedResponse(Response & response, Request & request, const long id) {
     std::stringstream loggedresp;
     loggedresp << selectId(response.getId(), id) << ": Received \"" << response.getProtocal().data() << \
     " " << response.getStatusCode().data() << " " << response.getReasonPhrase().data() << \
