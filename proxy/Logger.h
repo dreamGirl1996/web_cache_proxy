@@ -6,16 +6,26 @@
 #include "Response.h"
 #include <fstream>
 
+const u_long selectId(const u_long & uid, const long & id) {
+    if (id < 0) {
+        return uid;
+    }
+    else {
+        u_long ans = (uid > (u_long) id)? uid : (u_long) id;
+        return ans;
+    }
+}
+
 class Logger {
     public:
     Logger();
-    virtual void openLogger(bool clear);
+    virtual void openLogger(bool clear=true);
     virtual void closeLogger();
     virtual void write(std::string msg);
     virtual void receivedRequest(Request & request, const std::vector<char> & ip);
     virtual void sendingRequest(Request & request);
     virtual void receivedResponse(Response & response, Request & request);
-    virtual void sendingResponse(Response & response);
+    virtual void sendingResponse(Response & response, const long id=-1);
     virtual void tunnelClosed(const u_long & id);
     virtual void notInCache(const u_long & id);
     virtual void inCacheExpiredAtX(const u_long & id, time_t & expireTime);
@@ -34,7 +44,7 @@ Logger::Logger() {
     this->closeLogger();
 }
 
-void Logger::openLogger(bool app=true) {
+void Logger::openLogger(bool app) {
     try {
         if (app) {
             log.open("./proxy.log", std::ios::app);
@@ -90,9 +100,9 @@ void Logger::receivedResponse(Response & response, Request & request) {
     this->write(loggedresp.str());
 }
 
-void Logger::sendingResponse(Response & response) {
+void Logger::sendingResponse(Response & response, const long id) {
     std::stringstream loggedresp;
-    loggedresp << response.getId() << ": Responding \"" << response.getProtocal().data() << \
+    loggedresp << selectId(response.getId(), id) << ": Responding \"" << response.getProtocal().data() << \
     " " << response.getStatusCode().data() << " " << response.getReasonPhrase().data() << \
     "\"" << "\r\n";
     this->write(loggedresp.str());

@@ -87,6 +87,9 @@ void cache::put_cache(const std::string key, Response value, const datetime_zone
 // else if (n==3) {
 //     //no cache control tag in new response
 // }
+// else if (n==4) {
+//     //recieved nothing from server in validation
+// }
 int cache::revalidate_header(Request & request, Response &response, int id, Logger & file, connect_pair_t & connectPair) {
     mapped_field_t response_header_map_prev=response.getHeaderFields();
     auto it_etag = response_header_map_prev.find("Etag");
@@ -114,6 +117,10 @@ int cache::revalidate_header(Request & request, Response &response, int id, Logg
     std::vector<char> responseMsgNew;
     Response NewResponse(request.getId());
     clientSocket.socketRecv(responseMsgNew, NewResponse);//recv server new response
+    if (responseMsgNew.size() == 0) {
+        closeSockfd(connectPair.first);
+        return 4;
+    } // commented when responseMst resized in client socketRecv
     cleanVectorChar(NewResponse.getContent());
     NewResponse.getContent() = obtainContent(responseMsgNew);
     file.receivedResponse(NewResponse, request);//TODO:Maybe has mistake
@@ -126,11 +133,11 @@ int cache::revalidate_header(Request & request, Response &response, int id, Logg
         std::vector<char> reconRespMsg =response.reconstruct();
         serverSocket.socketSend(reconRespMsg, connectPair);//send to browser
         //TODO:MAYBE NOT CORRECT
-        file.sendingResponse(NewResponse);
+        file.sendingResponse(NewResponse, (long) id);
         return 0;
     }
 
-    mapped_field_t response_header_map_new=response.getHeaderFields();
+    mapped_field_t response_header_map_new = response.getHeaderFields();
     auto it_response_new = response_header_map_new.find("Cache-Control");
     std::string response_cache_control_material;
     if (it_response_new != response_header_map_new.end()) {
@@ -143,7 +150,7 @@ int cache::revalidate_header(Request & request, Response &response, int id, Logg
             std::vector<char> reconRespMsg = NewResponse.reconstruct();
             file.receivedResponse(NewResponse, request);
             serverSocket.socketSend(reconRespMsg, connectPair);//send to browser
-            file.sendingResponse(NewResponse);
+            file.sendingResponse(NewResponse, (long) id);
             return 1;
         }
         else { // first time to put into cache
@@ -165,23 +172,25 @@ int cache::revalidate_header(Request & request, Response &response, int id, Logg
                 time_t res = std::mktime(&currTime.first) + (time_t) age;
                 file.cachedExpiresAtX(id, res);
             }
-            auto it_response_expires = response_header_map_new.find("Expires");
-            std::vector<char> response_expire_material;
-            if(it_response_expires!=response_header_map_new.end()) {//header hase expires
-                response_expire_material = it_response_expires->second;//expire time
-                // int expire=stoi(response_expire_material);
-                std::tm expire = getDatetimeAndZone(response_expire_material).first;
-                time_t res = std::mktime(&currTime.first) + std::mktime(&expire);
-                file.cachedExpiresAtX(id, res);
-            }
-            else{
-                //TODO:no expire tag
+            else {
+                auto it_response_expires = response_header_map_new.find("Expires");
+                std::vector<char> response_expire_material;
+                if(it_response_expires!=response_header_map_new.end()) {//header hase expires
+                    response_expire_material = it_response_expires->second;//expire time
+                    // int expire=stoi(response_expire_material);
+                    std::tm expire = getDatetimeAndZone(response_expire_material).first;
+                    time_t res = std::mktime(&currTime.first) + std::mktime(&expire);
+                    file.cachedExpiresAtX(id, res);
+                }
+                else{
+                    //TODO:no expire tag
+                }
             }
             //send to browser
             std::vector<char> reconRespMsg = response.reconstruct();
             file.receivedResponse(response, request);
             serverSocket.socketSend(reconRespMsg, connectPair);
-            file.sendingResponse(response);
+            file.sendingResponse(response, (long) id);
             return 2;
         }
     }
@@ -190,7 +199,7 @@ int cache::revalidate_header(Request & request, Response &response, int id, Logg
         std::vector<char> reconRespMsg = response.reconstruct();
         file.receivedResponse(response, request);
         serverSocket.socketSend(reconRespMsg, connectPair);
-        file.sendingResponse(response);
+        file.sendingResponse(response, (long) id);
         return 3;
     }
 }
@@ -214,17 +223,15 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
         // Response response(request.getId());
         response.clearResponse();
         clientSocket.socketRecv(responseMsg, response);//recv server response
-
         if (responseMsg.size() == 0) {
             closeSockfd(connectPair.first);
             return;
         } // commented when responseMst resized in client socketRecv
-
         cleanVectorChar(response.getContent());
         response.getContent() = obtainContent(responseMsg);//get response content
 
         // check cache control material for response
-        mapped_field_t response_header_map=response.getHeaderFields();
+        mapped_field_t response_header_map = response.getHeaderFields();
         auto it_response = response_header_map.find("Cache-Control");
         std::string response_cache_control_material;
         if(it_response!=response_header_map.end()) {// response has cache-control
@@ -238,7 +245,7 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
                 std::vector<char> reconRespMsg = response.reconstruct();
                 file.receivedResponse(response, request);
                 serverSocket.socketSend(reconRespMsg, connectPair);//send to browser
-                file.sendingResponse(response);
+                file.sendingResponse(response, (long) id);
                 return;
             }
         }
@@ -261,17 +268,19 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
             time_t res = std::mktime(&currTime.first) + (time_t) age;
             file.cachedExpiresAtX(id, res);
         }
-        auto it_response_expires = response_header_map.find("Expires");
-        std::vector<char> response_expire_material;
-        if(it_response_expires!=response_header_map.end()) {//header hase expires
-            response_expire_material = it_response_expires->second;//expire time
-            // int expire=stoi(response_expire_material);
-            std::tm expire = getDatetimeAndZone(response_expire_material).first;
-            time_t res = std::mktime(&currTime.first) + std::mktime(&expire);
-            file.cachedExpiresAtX(id, res);
-        }
-        else{
-            //TODO:no expire tag
+        else {
+            auto it_response_expires = response_header_map.find("Expires");
+            std::vector<char> response_expire_material;
+            if(it_response_expires!=response_header_map.end()) {//header hase expires
+                response_expire_material = it_response_expires->second;//expire time
+                // int expire=stoi(response_expire_material);
+                std::tm expire = getDatetimeAndZone(response_expire_material).first;
+                time_t res = std::mktime(&currTime.first) + std::mktime(&expire);
+                file.cachedExpiresAtX(id, res);
+            }
+            else{
+                //TODO:no expire tag
+            }
         }
         //////////////////////////
 
@@ -282,7 +291,7 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
         std::vector<char> reconRespMsg = response.reconstruct();
         file.receivedResponse(response, request);
         serverSocket.socketSend(reconRespMsg, connectPair);
-        file.sendingResponse(response);
+        file.sendingResponse(response, (long) id);
 
     } 
     else {// cache_list contains what was requested (in cache), which was stored in response
@@ -316,7 +325,7 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
                     std::vector<char> reconRespMsg =response.reconstruct();
                     serverSocket.socketSend(reconRespMsg, connectPair);//send to browser
                     //TODO:MAYBE NOT CORRECT
-                    file.sendingResponse(response);
+                    file.sendingResponse(response, (long) id);
                     return;
                 }
                 else { // not fresh
@@ -358,7 +367,7 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
                 file.inCacheValid(id);
                 std::vector<char> reconrespMsg = response.reconstruct();
                 serverSocket.socketSend(reconrespMsg, connectPair);
-                file.sendingResponse(response);
+                file.sendingResponse(response, (long) id);
             }
             else {
                 file.inCacheExpiredAtX(id, expire_time);
@@ -376,6 +385,33 @@ void cache::check_cache(Request & request, int id, Logger & file, connect_pair_t
     if (it_request != request_header_map.end()) {
         request_cache_control_material = it_request->second.data();
         // no-store or private?
+        if (request_cache_control_material.find("no-store") != std::string::npos || \
+        request_cache_control_material.find("private") != std::string::npos) {
+            file.notInCache(id);
+
+            ClientSocket clientSocket(request.getHostName(), request.getPort());
+            std::vector<char> requestMsg = request.reconstruct();
+            file.sendingRequest(request);
+            clientSocket.socketSend(requestMsg);
+
+            std::vector<char> responseMsg;
+            Response response(request.getId());
+            clientSocket.socketRecv(responseMsg, response);
+            if (responseMsg.size() == 0) {
+                closeSockfd(connectPair.first);
+                return;
+            } // commented when responseMst resized in client socketRecv
+            cleanVectorChar(response.getContent());
+            response.getContent() = obtainContent(responseMsg);
+            
+            file.receivedResponse(response, request);
+            std::vector<char> reconRespMsg = response.reconstruct();
+
+            serverSocket.socketSend(reconRespMsg, connectPair);
+
+            file.sendingResponse(response);
+            return;
+        }
     }
     response_helper(request, id, file, connectPair);
 }
