@@ -5,7 +5,7 @@ http://www.4399.com
 http://fanyi.youdao.com
 
 2. Tesing post
-homework 1's website
+http://httpbin.org/forms/post
 
 3. Testing connect
 https://stackoverflow.com
