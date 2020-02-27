@@ -14,8 +14,8 @@ class Logger {
     virtual void write(std::string msg);
     virtual void receivedRequest(Request & request, const std::vector<char> & ip);
     virtual void sendingRequest(Request & request);
-    virtual void sendingResponse(Response & response);
     virtual void receivedResponse(Response & response, Request & request);
+    virtual void sendingResponse(Response & response);
     virtual void tunnelClosed(const u_long & id);
 
     protected:
@@ -83,11 +83,11 @@ void Logger::sendingRequest(Request & request) {
     this->closeLogger();
 }
 
-void Logger::sendingResponse(Response & response) {
+void Logger::receivedResponse(Response & response, Request & request) {
     std::stringstream loggedresp;
-    loggedresp << response.getId() << ": Responding \"" << response.getProtocal().data() << \
+    loggedresp << response.getId() << ": Received \"" << response.getProtocal().data() << \
     " " << response.getStatusCode().data() << " " << response.getReasonPhrase().data() << \
-    "\"" << "\r\n";
+    "\"" << " from " << request.getHostName().data() << "\r\n";
     std::lock_guard<std::mutex> lock(mtx);
     this->openLogger();
     this->log << loggedresp.str();
@@ -95,11 +95,11 @@ void Logger::sendingResponse(Response & response) {
     this->closeLogger();
 }
 
-void Logger::receivedResponse(Response & response, Request & request) {
+void Logger::sendingResponse(Response & response) {
     std::stringstream loggedresp;
-    loggedresp << response.getId() << ": Received \"" << response.getProtocal().data() << \
+    loggedresp << response.getId() << ": Responding \"" << response.getProtocal().data() << \
     " " << response.getStatusCode().data() << " " << response.getReasonPhrase().data() << \
-    "\"" << " from " << request.getHostName().data() << "\r\n";
+    "\"" << "\r\n";
     std::lock_guard<std::mutex> lock(mtx);
     this->openLogger();
     this->log << loggedresp.str();

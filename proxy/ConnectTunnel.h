@@ -61,12 +61,11 @@ bool handleConnect(const u_long & id, Logger & logger, Request & request,
 ServerSocket & serverSocket, connect_pair_t & connectPair) {
     // std::cout<<"method is connnect now"<<std::endl;
     std::vector<char> responseForConnect;
+    ClientSocket clientSocket(request.getHostName(), request.getPort());
     cstrToVectorChar(responseForConnect, "HTTP/1.1 200 OK\r\n\r\n");
     serverSocket.socketSend(responseForConnect, connectPair);
 
     int client_fd = connectPair.first;
-
-    ClientSocket clientSocket(request.getHostName(), request.getPort());
     int server_fd = clientSocket.getWebServerSockfd();
 
     fd_set socket_set;

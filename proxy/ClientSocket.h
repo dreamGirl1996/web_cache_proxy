@@ -62,10 +62,10 @@ bool ClientSocket::setup() {
     hints.ai_socktype = SOCK_STREAM;
 
     if ((rv = getaddrinfo(this->hostName.data(), this->port.data(), &hints, &servinfo)) != 0) { // servinfo: linked list
-        std::cerr << "proxy ClientSocket getaddrinfo: " << gai_strerror(rv) << "\n";
-        std::cerr << "hostName: " << this->hostName.data() << "\n";
-        std::cerr << "port: " << this->port.data() << "\n";
-        throw std::invalid_argument("Error in setup!");
+        // std::cerr << "proxy ClientSocket getaddrinfo: " << gai_strerror(rv) << "\n";
+        // std::cerr << "hostName: " << this->hostName.data() << "\n";
+        // std::cerr << "port: " << this->port.data() << "\n";
+        throw std::out_of_range("Error in setup!");
         // return false;
     }
 

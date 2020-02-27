@@ -6,5 +6,5 @@ services:
     volumes: 
       - ./proxy:/var/log/erss/
     ports: 
-      - 12345:12345
+      - "12345:12345"
     tty: true

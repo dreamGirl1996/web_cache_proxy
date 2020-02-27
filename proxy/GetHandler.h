@@ -26,13 +26,13 @@ ServerSocket & serverSocket, connect_pair_t & connectPair) {
 
     // cleanVectorChar(response.getContent());
     // response.getContent() = obtainContent(responseMsg);
+    
+    // logger.receivedResponse(response, request);
     // std::vector<char> reconRespMsg = response.reconstruct();
-
-    // logger.sendingResponse(response);
 
     // serverSocket.socketSend(reconRespMsg, connectPair);
 
-    // logger.receivedResponse(response, request);
+    // logger.sendingResponse(response);
 
     return true;
 }

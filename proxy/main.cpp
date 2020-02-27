@@ -38,20 +38,34 @@ ServerSocket & serverSocket, connect_pair_t connectPair) {
 
     logger.receivedRequest(request, serverSocket.getIpAddr());
 
-    if (strcmp(method.data(), "CONNECT") == 0) {
-        if (!handleConnect(id, logger, request, serverSocket, connectPair)) {
-            closeSockfd(connectPair.first);
-            return;
+    try {
+        if (strcmp(method.data(), "CONNECT") == 0) {
+            if (!handleConnect(id, logger, request, serverSocket, connectPair)) {
+                closeSockfd(connectPair.first);
+                return;
+            }
         }
+        else if (strcmp(method.data(), "GET") == 0) {
+            handleGet(ch, logger, request, serverSocket, connectPair);
+        }
+        else if (strcmp(method.data(), "POST") == 0) {
+            handlePost(logger, request, serverSocket, connectPair);
+        }
+    
+        closeSockfd(connectPair.first);
     }
-    else if (strcmp(method.data(), "GET") == 0) {
-        handleGet(ch, logger, request, serverSocket, connectPair);
-    }
-    else if (strcmp(method.data(), "POST") == 0) {
-        handlePost(logger, request, serverSocket, connectPair);
-    }
+    catch (std::out_of_range) {
+        std::string responseString = "HTTP/1.1 404 Not Found";
 
-    closeSockfd(connectPair.first);
+        std::vector<char> respVectorChar;
+        cstrToVectorChar(respVectorChar, (responseString + "\r\n\r\n").c_str());
+        serverSocket.socketSend(respVectorChar, connectPair);
+        std::stringstream ss;
+        ss << id << ": Responding " << "\"" << responseString << "\"" << "\r\n";
+        logger.write(ss.str());
+
+        closeSockfd(connectPair.first);
+    }
 }
 
 int main(int argc, char *argv[]) {
