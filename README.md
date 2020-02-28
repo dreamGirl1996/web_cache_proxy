@@ -2,7 +2,7 @@
 
 By Qing Lu, Chixiang Zhang
 
-This is a HTTP proxy that can handle GET (with cache), POST and CONNECT Post. Also, it can implemented multi-thread to handle with concurrency.
+This is a HTTP proxy that can handle GET (with cache), POST and CONNECT. Also, it can implemented multi-thread to handle with concurrency.
 You could refer to log file to see the detail of request and response.
 
 To run our program, type ```sudo docker-compose up``` on the terminal. Wait a few seconds for the program to be fully compiled.
