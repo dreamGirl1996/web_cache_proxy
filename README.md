@@ -15,7 +15,7 @@ Tips while testing:
 
 - It is possible for our program to be terminated when a exception throwing. If that happens please re-run the program.
 
-If ```sudo docker-compose up``` does not work, please do the following to run our program:
+If ```sudo docker-compose up``` does not work, please do the following on the terminal to run our program:
 
 ```
 cd proxy
