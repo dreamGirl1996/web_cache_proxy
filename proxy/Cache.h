@@ -148,6 +148,7 @@ int cache::revalidate_header(Request & request, Response & response, int id, Log
         // file.receivedResponse(NewResponse, request, id);
         // file.notCacheable(id, "not \"200\"");
         serverSocket.socketSend(reconRespMsg, connectPair);
+        file.sendingResponse(NewResponse, id);
         return 5;  // no need to check cache
     }
 
@@ -273,6 +274,7 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
             file.receivedResponse(response, request, id);
             // file.notCacheable(id, "not \"200\"");
             serverSocket.socketSend(reconRespMsg, connectPair);
+            file.sendingResponse(response, id);
             return;  // no need to check cache
         }
 
