@@ -2,7 +2,7 @@
 
 2. If we input a wrong website that server can't find website address, proxy will return 404 and keep running.
 
-3. Proxy may receive some evil requests or responses.
+3. Proxy may receive some evil requests or responses, which we may not handled yet.
 
 4. We can't guarantee memory won't leak because of multiple threads.
 
@@ -21,3 +21,7 @@
 11. If header contains max_age=0 or no-cache, we need revalidate from server.
  
 12. It is possible for our program to be terminated when a exception throwing, since there exists some corner cases that were not considered by us.
+
+13. Some website may take lot of time to load. A thread pool might be considered in the future.
+
+14. Sometimes the browser cannot successfully load a page, but refreshing it can fix this issue.

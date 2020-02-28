@@ -1,4 +1,6 @@
-# erss-hwk2-ql101-cz130
+# HTTP Caching Proxy (HW2 for ECE 568 ERSS 2020 Spring)
+
+By Qing Lu, Chixiang Zhang
 
 This is a HTTP proxy that can handle GET (with cache), POST and CONNECT Post. Also, it can implemented multi-thread to handle with concurrency.
 You could refer to log file to see the detail of request and response.
@@ -9,14 +11,14 @@ If you want to see GET, POST and CONNECT, as well as our cache policy, you could
 
 ![cache_policy](./cache_policy.jpg)
 
-To run our program, type
+To run our program, type ```sudo docker-compose up``` on the terminal. Wait a few seconds for the program to be fully compiled.
 
-```
-sudo docker-compose up
-```
+While the program is running, you can open ./proxy/proxy.log to monitor http request/response. Test cases with tip can be found in ./text.txt.
 
-on the terminal. Wait a few seconds for the program to be fully compiled.
+Tips while testing:
 
-While the program is running, you can open ./proxy/proxy.log to monitor http request/response. Test cases with tips can be found in ./text.txt.
+- Some website may take lot of time to load. Please refresh the website if the browser cannot successfully load the page (e.g. connection refused, time out). If that still does not work, please terminate the program by Control-C and re-run the program.
+
+- It is possible for our program to be terminated when a exception throwing. If that happens please re-run the program.
 
 If you have any questions, please contact us!

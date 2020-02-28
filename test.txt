@@ -22,9 +22,9 @@ http://www.cplusplus.com (may take more time to load)
 Tips:
 
 Some website may take lot of time to load. Please refresh the website 
-if the browser cannot successful load the page (e.g. connection refused, time out).
+if the browser cannot successfully load the page (e.g. connection refused, time out).
 If that still does not work, please terminate the program by Control-C and re-run the
 program.
 
 It is possible for our program to be terminated when a exception throwing. If that 
-happen, please re-run the program.
+happens, please re-run the program.
