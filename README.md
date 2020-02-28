@@ -5,12 +5,6 @@ By Qing Lu, Chixiang Zhang
 This is a HTTP proxy that can handle GET (with cache), POST and CONNECT Post. Also, it can implemented multi-thread to handle with concurrency.
 You could refer to log file to see the detail of request and response.
 
-If you want to see GET, POST and CONNECT, as well as our cache policy, you could refer to two images:
-
-![get_post_connect](./get_post_connect.jpg)
-
-![cache_policy](./cache_policy.jpg)
-
 To run our program, type ```sudo docker-compose up``` on the terminal. Wait a few seconds for the program to be fully compiled.
 
 While the program is running, you can open ./proxy/proxy.log to monitor http request/response. Test cases with tip can be found in ./text.txt.
@@ -20,5 +14,11 @@ Tips while testing:
 - Some website may take lot of time to load. Please refresh the website if the browser cannot successfully load the page (e.g. connection refused, time out). If that still does not work, please terminate the program by Control-C and re-run the program.
 
 - It is possible for our program to be terminated when a exception throwing. If that happens please re-run the program.
+
+If you want to see GET, POST and CONNECT, as well as our cache policy, you could refer to two images:
+
+![get_post_connect](./get_post_connect.jpg)
+
+![cache_policy](./cache_policy.jpg)
 
 If you have any questions, please contact us!
