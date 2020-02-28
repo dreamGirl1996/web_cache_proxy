@@ -3,11 +3,12 @@
 By Qing Lu, Chixiang Zhang
 
 This is a HTTP proxy that can handle GET (with cache), POST and CONNECT. Also, it can implemented multi-thread to handle with concurrency.
-You could refer to log file to see the detail of request and response.
+
+Please refer to the version with the latest ```finalize``` commit for grading.
 
 To run our program, type ```sudo docker-compose up``` on the terminal. Wait a few seconds for the program to be fully compiled.
 
-While the program is running, you can open ./proxy/proxy.log to monitor HTTP request/response, which is also attached in ```/var/log/erss/``` in the docker image. Test cases with tip can be found in ```./test.txt```.
+While the program is running, you can open ```./proxy/proxy.log``` to monitor HTTP request/response, which is also attached in ```/var/log/erss/``` in the docker image. Test cases with tip can be found in ```./test.txt```.
 
 Tips while testing:
 
