@@ -71,7 +71,7 @@ void Logger::write(std::string msg) {
     std::lock_guard<std::mutex> lock(mtx);
     this->openLogger();
     this->log << msg;
-    std::cout << msg;
+    // std::cout << msg;
     this->closeLogger();
 }
 

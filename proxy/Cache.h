@@ -90,6 +90,9 @@ void cache::put_cache(const std::string key, Response value, const datetime_zone
 // else if (n==4) {
 //     //recieved nothing from server in validation
 // }
+// else if (n==5) {
+//     //not 200
+// }
 int cache::revalidate_header(Request & request, Response & response, int id, Logger & file, connect_pair_t & connectPair) {
     mapped_field_t response_header_map_prev=response.getHeaderFields();
     auto it_etag = response_header_map_prev.find("Etag");
@@ -133,36 +136,43 @@ int cache::revalidate_header(Request & request, Response & response, int id, Log
         std::vector<char> reconRespMsg = response.reconstruct();
         serverSocket.socketSend(reconRespMsg, connectPair);//send to browser
         //TODO:MAYBE NOT CORRECT
-        file.sendingResponse(NewResponse, (long) id);
+        file.sendingResponse(response, (long) id);
         return 0;
     }
 
-    // check is 200?
-
     // not 304, update cache
+    // check is 200?
+    if (strcmp(NewResponse.getStatusCode().data(), "200") != 0) {
+        // not cacheable
+        std::vector<char> reconRespMsg = NewResponse.reconstruct();
+        // file.receivedResponse(NewResponse, request, id);
+        // file.notCacheable(id, "not \"200\"");
+        serverSocket.socketSend(reconRespMsg, connectPair);
+        return 5;  // no need to check cache
+    }
+
     mapped_field_t response_header_map_new = response.getHeaderFields();
     auto it_response_new = response_header_map_new.find("Cache-Control");
-    std::string response_cache_control_material;
-    if (it_response_new != response_header_map_new.end()) {
-        response_cache_control_material = it_response_new->second.data();
+    // std::string response_cache_control_material;
+    if (it_response_new != response_header_map_new.end()) { // new response has cache-control
+        std::string response_cache_control_material = it_response_new->second.data();
         //if response(server) 200, no store->send to browser
         if ((response_cache_control_material.find("no-store") != std::string::npos || 
-        response_cache_control_material.find("private") != std::string::npos) &&
-        strcmp(NewResponse.getStatusCode().data(), "200") == 0) {
+        response_cache_control_material.find("private") != std::string::npos)) {
             //将server response 返回 browser,且不放进cache
             std::vector<char> reconRespMsg = NewResponse.reconstruct();
-            file.receivedResponse(NewResponse, request, id);
+            // file.receivedResponse(NewResponse, request, id);
             file.notCacheable(id, "\"no-store\" or \"private\"");
             serverSocket.socketSend(reconRespMsg, connectPair);//send to browser
             file.sendingResponse(NewResponse, (long) id);
             return 1;
         }
-        else { // first time to put into cache
+        else { // first time to put into cache?
             std::string url = request.getUri().data();
             datetime_zone_t currTime = getCurrentTime();
+            
             put_cache(url, NewResponse, currTime);
-
-            file.receivedResponse(response, request, id);
+            // file.receivedResponse(response, request, id);
             //if new response's head has no-cache
             if(response_cache_control_material.find("no-cache")!=std::string::npos ||
                response_cache_control_material.find("max-age=0") != std::string::npos){
@@ -178,49 +188,55 @@ int cache::revalidate_header(Request & request, Response & response, int id, Log
                 file.cachedExpiresAtX(id, res);
             }
             else {
-                time_t expire_time;
-                auto it_response_expires = response_header_map_new.find("Expires");
-                std::vector<char> response_expire_material;
-                if(it_response_expires != response_header_map_new.end()) {//header hase expires
-                    response_expire_material = it_response_expires->second;//expire time
-                    // int expire=stoi(response_expire_material);
-                    std::tm expire = getDatetimeAndZone(response_expire_material).first;
-                    expire_time = std::mktime(&currTime.first) + std::mktime(&expire);
-                    file.cachedExpiresAtX(id, expire_time);
-                }
-                else{
-                    //TODO:no expire tag
-                    time_t store_time = std::mktime(&currTime.first);
-                    auto it_response_last_modified = response_header_map_new.find("Last-Modified");
-                    std::vector<char> response_last_modified_material;
-                    if (it_response_last_modified != response_header_map_new.end()) { // cached response has last-modified
-                        std::tm datetm = getDatetimeAndZone(response.getDatetimeVectorChar()).first;
-                        time_t date = std::mktime(&datetm);
-                        std::tm last_modified_tm = getDatetimeAndZone(it_response_last_modified->second).first;
-                        time_t last_modified = std::mktime(&last_modified_tm);
-                        expire_time = store_time + (date - last_modified) * 0.1;
-                        
-                        // std::cout << "storetime " << asctime(gmtime(&store_time));
-                    }
-                    else { // cached response no has last-modified
-                        expire_time = store_time + (time_t) 36000;
-                    }
-                    file.cachedExpiresAtX(id, expire_time);
-                }
+                file.cachedRequiresRevalidation(id);
             }
             //send to browser
-            std::vector<char> reconRespMsg = response.reconstruct();
+            std::vector<char> reconRespMsg = NewResponse.reconstruct();
             serverSocket.socketSend(reconRespMsg, connectPair);
-            file.sendingResponse(response, (long) id);
+            file.sendingResponse(NewResponse, (long) id);
             return 2;
         }
     }
     else {
         //no cache control in new response
-        std::vector<char> reconRespMsg = response.reconstruct();
-        file.receivedResponse(response, request, id);
+        std::string url = request.getUri().data();
+        datetime_zone_t currTime = getCurrentTime();
+        time_t expire_time;
+
+        put_cache(url, NewResponse, currTime);
+        auto it_response_expires = response_header_map_new.find("Expires");
+        // std::vector<char> response_expire_material;
+        if(it_response_expires != response_header_map_new.end()) {//header hase expires
+            std::vector<char> response_expire_material = it_response_expires->second;//expire time
+            // int expire=stoi(response_expire_material);
+            std::tm expire = getDatetimeAndZone(response_expire_material).first;
+            expire_time = std::mktime(&currTime.first) + std::mktime(&expire);
+            file.cachedExpiresAtX(id, expire_time);
+        }
+        else{
+            //TODO:no expire tag
+            time_t store_time = std::mktime(&currTime.first);
+            auto it_response_last_modified = response_header_map_new.find("Last-Modified");
+            std::vector<char> response_last_modified_material;
+            if (it_response_last_modified != response_header_map_new.end()) { // cached response has last-modified
+                std::tm datetm = getDatetimeAndZone(response.getDatetimeVectorChar()).first;
+                time_t date = std::mktime(&datetm);
+                std::tm last_modified_tm = getDatetimeAndZone(it_response_last_modified->second).first;
+                time_t last_modified = std::mktime(&last_modified_tm);
+                expire_time = store_time + (date - last_modified) * 0.1;
+                
+                // std::cout << "storetime " << asctime(gmtime(&store_time));
+            }
+            else { // cached response no has last-modified
+                expire_time = store_time + (time_t) 36000;
+            }
+            file.cachedExpiresAtX(id, expire_time);
+        }
+
+        std::vector<char> reconRespMsg = NewResponse.reconstruct();
+        // file.receivedResponse(NewResponse, request, id);
         serverSocket.socketSend(reconRespMsg, connectPair);
-        file.sendingResponse(response, (long) id);
+        file.sendingResponse(NewResponse, (long) id);
         return 3;
     }
 }
@@ -251,12 +267,11 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
         cleanVectorChar(response.getContent());
         response.getContent() = obtainContent(responseMsg);//get response content
 
-        if (strcmp(response.getStatusCode().data(), "200") != 0 && 
-        strcmp(response.getStatusCode().data(), "304") != 0) {
+        if (strcmp(response.getStatusCode().data(), "200") != 0) {
             // not cacheable
             std::vector<char> reconRespMsg = response.reconstruct();
             file.receivedResponse(response, request, id);
-            file.notCacheable(id, "not \"200\" nor \"304\"");
+            // file.notCacheable(id, "not \"200\"");
             serverSocket.socketSend(reconRespMsg, connectPair);
             return;  // no need to check cache
         }
@@ -264,9 +279,9 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
         // check cache control material for response
         mapped_field_t response_header_map = response.getHeaderFields();
         auto it_response = response_header_map.find("Cache-Control");
-        std::string response_cache_control_material;
+        // std::string response_cache_control_material;
         if(it_response!=response_header_map.end()) {// response has cache-control
-            response_cache_control_material = it_response->second.data();
+            std::string response_cache_control_material = it_response->second.data();
             //if response(server) 200 && (no-store || private) -> not cacheable -> send response to browser directly
             if ((response_cache_control_material.find("no-store") != std::string::npos || 
             response_cache_control_material.find("private")!=std::string::npos)) {
@@ -278,33 +293,39 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
                 file.sendingResponse(response, (long) id);
                 return;
             }
-        }
-
-        //put response(from server) to cache
-        put_cache(url, response, currTime);
-        file.receivedResponse(response, request, id);
-
-        ///////////////////////////////////
-        //if new response's head has no-cache
-        if(response_cache_control_material.find("no-cache") != std::string::npos ||
-            response_cache_control_material.find("max-age=0") != std::string::npos){
-            file.cachedRequiresRevalidation(id);
-        }
-        else if (response_cache_control_material.find("max-age") != std::string::npos) {//update expire time?
-            size_t pos = response_cache_control_material.find("max-age=");
-            pos += 8;
-            size_t pos1 = response_cache_control_material.find(",", pos);
-            std::string age_content = response_cache_control_material.substr(pos, pos1 - pos);
-            int age = stoi(age_content);
-            time_t res = std::mktime(&currTime.first) + (time_t) age;
-            file.cachedExpiresAtX(id, res);
+            else {
+                //put response(from server) to cache
+                put_cache(url, response, currTime);
+                file.receivedResponse(response, request, id);
+                //if new response's head has no-cache
+                if(response_cache_control_material.find("no-cache") != std::string::npos ||
+                response_cache_control_material.find("max-age=0") != std::string::npos){
+                    file.cachedRequiresRevalidation(id);
+                }
+                else if (response_cache_control_material.find("max-age") != std::string::npos) {//update expire time?
+                    size_t pos = response_cache_control_material.find("max-age=");
+                    pos += 8;
+                    size_t pos1 = response_cache_control_material.find(",", pos);
+                    std::string age_content = response_cache_control_material.substr(pos, pos1 - pos);
+                    int age = stoi(age_content);
+                    time_t res = std::mktime(&currTime.first) + (time_t) age;
+                    file.cachedExpiresAtX(id, res);
+                }
+                else {
+                    file.cachedRequiresRevalidation(id);
+                }
+            }
         }
         else {
+            //put response(from server) to cache
+            put_cache(url, response, currTime);
+            file.receivedResponse(response, request, id);
+
             time_t expire_time;
             auto it_response_expires = response_header_map.find("Expires");
-            std::vector<char> response_expire_material;
+            // std::vector<char> response_expire_material;
             if(it_response_expires!=response_header_map.end()) {//header hase expires
-                response_expire_material = it_response_expires->second;//expire time
+                std::vector<char> response_expire_material = it_response_expires->second;//expire time
                 // int expire=stoi(response_expire_material);
                 std::tm expire = getDatetimeAndZone(response_expire_material).first;
                 expire_time = std::mktime(&currTime.first) + std::mktime(&expire);
@@ -314,7 +335,7 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
                 //TODO:no expire tag
                 time_t store_time = std::mktime(&currTime.first);
                 auto it_response_last_modified = response_header_map.find("Last-Modified");
-                std::vector<char> response_last_modified_material;
+                // std::vector<char> response_last_modified_material;
                 if (it_response_last_modified != response_header_map.end()) { // cached response has last-modified
                     std::tm datetm = getDatetimeAndZone(response.getDatetimeVectorChar()).first;
                     time_t date = std::mktime(&datetm);
@@ -330,7 +351,6 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
                 file.cachedExpiresAtX(id, expire_time);
             }
         }
-        //////////////////////////
 
         // cached, but expires at 
         // cached, requires revalidation
@@ -355,19 +375,19 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
                 return; // no need to look at response headers
             }
         }
-        else { // no cache-control, needs revalidation
-            file.inCacheReqiresValidation(id);
-            revalidate_header(request, response, id, file, connectPair);
-            return; // no need to look at response headers
-        }
+        // else { // no cache-control, needs revalidation
+        //     file.inCacheReqiresValidation(id);
+        //     revalidate_header(request, response, id, file, connectPair);
+        //     return; // no need to look at response headers
+        // }
 
         //look for cache-control in response
         mapped_field_t response_header_map = response.getHeaderFields();
         auto it_response = response_header_map.find("Cache-Control");
-        std::string response_cache_control_material;
+        // std::string response_cache_control_material;
         if (it_response != response_header_map.end()) { // cache-control field exists in cached response
             // std::cout<<"no cache lalalla"<<std::endl;
-            response_cache_control_material = it_response->second.data();
+            std::string response_cache_control_material = it_response->second.data();
             //find no-cache or max-age=0 tag in cache
             if (response_cache_control_material.find("no-cache") != std::string::npos ||
                 response_cache_control_material.find("max-age=0") != std::string::npos) {
@@ -376,7 +396,7 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
                 revalidate_header(request, response, id, file, connectPair);
             }
             //find max-age in cache
-            else if (response_cache_control_material.find("max-age") != std::string::npos){
+            else if (response_cache_control_material.find("max-age") != std::string::npos) {
                 size_t pos = response_cache_control_material.find("max-age=");
                 pos += 8;
                 size_t pos1 = response_cache_control_material.find(",", pos);
@@ -385,7 +405,7 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
                 //TODO:check whether fresh
                 datetime_zone_t store_time = response.getStoredTime();
                 time_t expiretime = std::mktime(&store_time.first) + (time_t) age;
-                if (expiretime > std::mktime(&currTime.first)){ // fresh
+                if (expiretime > std::mktime(&currTime.first)) { // fresh
                     // log for valid
                     file.inCacheValid(id);
                     std::vector<char> reconRespMsg =response.reconstruct();
@@ -397,17 +417,21 @@ void cache::response_helper(Request & request, int id, Logger & file, connect_pa
                 else { // not fresh
                     // log for re-validation
                     file.inCacheReqiresValidation(id);
-                    revalidate_header(request, response, id, file,connectPair);
+                    revalidate_header(request, response, id, file, connectPair);
                 }
+            }
+            else {
+                file.inCacheReqiresValidation(id);
+                revalidate_header(request, response, id, file, connectPair);
             }
         }
         else {  // cache-control field not exists in cached response
             //check the expires tag
             time_t expire_time;
             auto it_response_expires = response_header_map.find("Expires");
-            std::vector<char> response_expire_material;
+            // std::vector<char> response_expire_material;
             if (it_response_expires != response_header_map.end()) {// cached response header has expires
-                response_expire_material = it_response_expires->second;//expire time
+                std::vector<char> response_expire_material = it_response_expires->second;//expire time
                 // int expire=stoi(response_expire_material);
                 std::tm expire = getDatetimeAndZone(response_expire_material).first;
                 expire_time = std::mktime(&currTime.first) + std::mktime(&expire);
