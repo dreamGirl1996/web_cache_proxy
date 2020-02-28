@@ -7,7 +7,7 @@ You could refer to log file to see the detail of request and response.
 
 To run our program, type ```sudo docker-compose up``` on the terminal. Wait a few seconds for the program to be fully compiled.
 
-While the program is running, you can open ./proxy/proxy.log to monitor HTTP request/response, which is also attached in ```/var/log/erss/``` in the docker image. Test cases with tip can be found in ```./text.txt```.
+While the program is running, you can open ./proxy/proxy.log to monitor HTTP request/response, which is also attached in ```/var/log/erss/``` in the docker image. Test cases with tip can be found in ```./test.txt```.
 
 Tips while testing:
 
