@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
             id++;
             std::thread th(runProxy, std::ref(ch), std::ref(id), std::ref(logger),
             std::ref(serverSocket), connectPair);
-            th.join();
+            th.detach();
         }
     }
     catch (std::exception & e) {
